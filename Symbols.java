@@ -44,4 +44,9 @@ class Symbols extends Elements{
         }
     }
 
+  @Override
+    public boolean isValid(String symbol) {
+        return symbol.matches("[a-zA-Z0-9]+");
+    }
+
 }
