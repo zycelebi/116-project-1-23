@@ -1,0 +1,10 @@
+// fsm
+/*
++Elements(abstract super class)(?)
+   -States(extends Elements)
+   -Transitions(extends Elements)
+   -Symbols(extends Elements)
++Methods(interface)(funclar)
++FSM(implements Methods)(func infos)
++Main(file read, write)
+*/
