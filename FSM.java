@@ -1,11 +1,6 @@
 import java.util.HashSet;
 import java.util.Set;
 
-public class FSM {
-}
-abstract class Elements{
-    public abstract boolean isValid(String symbol);
-}
 class States extends Elements {
     private Set<String> states = new HashSet<>();
     private Set<String> finalStates = new HashSet<>();
