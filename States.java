@@ -2,7 +2,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 
-class States extends Elements implements clear{
+class States extends Elements implements clear, PRINT{
     private Set<String> states = new HashSet<>();
     private Set<String> finalStates = new HashSet<>();
     private String initialState;
@@ -38,7 +38,26 @@ class States extends Elements implements clear{
         initialState=null;
         System.out.println("FSM cleared.");
     }
-        
+
+    @Override
+    public void printToFile(String filename) {
+        try (FileWriter writer = new FileWriter(filename, true)) {
+            for (String state : states) {
+                String label = "";
+                if (state.equalsIgnoreCase(initialState)) {
+                    label += " (initial)";
+                }
+                if (finalStates.contains(state)) {
+                    label += " (final)";
+                }
+                writer.write("STATES: " + state +" "+ label);
+            }
+        } catch (IOException e) {
+            System.out.println("Error: Cannot write states to file " + filename);
+        }
+    }
+}
+    
     @Override
     public boolean isValid(String symbol) {
         return symbol.matches("[a-zA-Z0-9]+");
