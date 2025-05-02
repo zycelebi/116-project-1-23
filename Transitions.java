@@ -3,7 +3,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-class Transitions extends Elements implements clear {
+class Transitions extends Elements implements clear, PRINT {
     private Map<String, Map<String, String>> transitions;
     private States states;
     private Symbols symbols;
@@ -25,6 +25,22 @@ class Transitions extends Elements implements clear {
         System.out.println("FSM cleared.");
     }
 
+   @Override
+    public void printToFile(String filename) {
+        try (FileWriter writer = new FileWriter(filename, true)) {
+            for (String fromState : transitions.keySet()) {
+                Map<String, String> symbolMap = transitions.get(fromState);
+                for (Map.Entry<String, String> entry : symbolMap.entrySet()) {
+                    writer.write("TRANSITION " + fromState + " -" + entry.getKey() + "-> " + entry.getValue());
+                    
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error: Cannot write transitions to file " + filename);
+        }
+    }
+    
+    
     private void addTransition(String fromState, String symbol, String toState) {
      
         if (!states.isValid(fromState) || !symbols.isValid(symbol) || !states.isValid(toState)) {
