@@ -1,0 +1,87 @@
+import java.util.Scanner;
+
+public class FSMDesigner {
+    private static final Scanner scanner = new Scanner(System.in);
+
+    public static void main(String[] args) {
+       
+
+        while (true) {
+            System.out.print("? "); // başa ? koyar
+
+            String input = scanner.nextLine().trim();
+
+            if (input.equalsIgnoreCase("EXIT")) {
+                break;
+            }
+
+            if (input.isBlank()) {
+                continue;
+            }
+
+            try {
+                processCommand(input);
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+        }
+
+        System.out.println("Exiting FSM Designer...");
+    }
+
+    private static void processCommand(String input) {
+       
+        if (!input.endsWith(";")) {
+            System.out.println("Warning: invalid command;");
+            return;
+        }
+
+        String command = input.substring(0, input.length() - 1).trim();
+
+        if (command.toUpperCase().startsWith("SYMBOLS")) {
+            handleSymbols(command.substring(7).trim());
+        } else if (command.toUpperCase().startsWith("INITIAL-STATE")) {
+            handleInitialState(command.substring(14).trim());
+        } else if (command.toUpperCase().startsWith("FINAL-STATES")) {
+            handleFinalStates(command.substring(13).trim());
+        } else if (command.toUpperCase().startsWith("STATES")) {
+            handleStates(command.substring(6).trim());
+        } else if (command.toUpperCase().startsWith("TRANSITIONS")) {
+            handleTransitions(command.substring(11).trim());
+        } else if (command.equalsIgnoreCase("PRINT")) {
+            handlePrint();
+        } else {
+            System.out.println("Warning: invalid command;");
+        }
+    }
+
+    private static void handleSymbols(String args) {
+        
+        System.out.println("Handling SYMBOLS: " + args);
+    }
+
+    private static void handleInitialState(String arg) {
+        
+        System.out.println("Handling INITIAL-STATE: " + arg);
+    }
+
+    private static void handleFinalStates(String args) {
+        
+        System.out.println("Handling FINAL-STATES: " + args);
+    }
+
+    private static void handleStates(String args) {
+        
+        System.out.println("Handling STATES: " + args);
+    }
+
+    private static void handleTransitions(String args) {
+      
+        System.out.println("Handling TRANSITIONS: " + args);
+    }
+
+    private static void handlePrint() {
+       
+        System.out.println("Printing FSM state...");
+    }
+}
