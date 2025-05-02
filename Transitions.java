@@ -3,7 +3,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-class Transitions extends Elements implements CLEAR {
+class Transitions extends Elements implements clear {
     private Map<String, Map<String, String>> transitions;
     private States states;
     private Symbols symbols;
