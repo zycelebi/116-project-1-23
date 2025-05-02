@@ -2,7 +2,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 
-class States extends Elements {
+class States extends Elements implements CLEAR {
     private Set<String> states = new HashSet<>();
     private Set<String> finalStates = new HashSet<>();
     private String initialState;
@@ -31,7 +31,14 @@ class States extends Elements {
         this.finalStates = new HashSet<>();
         this.initialState = null;
     }
-
+    @Override
+    public void clear(){
+        states.clear();
+        finalStates.clear();
+        initialState=null;
+        System.out.println("FSM cleared.");
+    }
+        
     @Override
     public boolean isValid(String symbol) {
         return symbol.matches("[a-zA-Z0-9]+");
