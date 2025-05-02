@@ -40,6 +40,7 @@ class Symbols extends Elements implements clear{
     @Override
     public void clear(){
         symbols.clear();
+        System.out.println("FSM cleared.");
     }
 
     @Override
