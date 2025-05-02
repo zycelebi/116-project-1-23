@@ -22,6 +22,7 @@ class Transitions extends Elements implements clear {
     @Override
     public void clear(){
         transitions.clear();
+        System.out.println("FSM cleared.");
     }
 
     private void addTransition(String fromState, String symbol, String toState) {
