@@ -3,7 +3,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-class Transitions extends Elements {
+class Transitions extends Elements implements CLEAR {
     private Map<String, Map<String, String>> transitions;
     private States states;
     private Symbols symbols;
@@ -17,6 +17,11 @@ class Transitions extends Elements {
     @Override
     public boolean isValid(String symbol) {
         return symbol.matches("[a-zA-Z0-9]+");
+    }
+
+    @Override
+    public void clear(){
+        transitions.clear();
     }
 
     private void addTransition(String fromState, String symbol, String toState) {
