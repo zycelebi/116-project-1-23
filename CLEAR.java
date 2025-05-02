@@ -1,0 +1,3 @@
+interface clear{
+  void clear();
+}
