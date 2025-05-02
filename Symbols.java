@@ -1,7 +1,7 @@
 import java.util.HashSet;
 import java.util.Set;
 
-class ExistingSymbolException extends Exception{
+class ExistingSymbolException extends Exception implements CLEAR {
   public ExistingSymbolException(String message){
         super(message);
         }
@@ -47,6 +47,10 @@ class Symbols extends Elements{
   @Override
     public boolean isValid(String symbol) {
         return symbol.matches("[a-zA-Z0-9]+");
+    }
+  @Override
+    public void clear(){
+        symbols.clear();
     }
 
 }
