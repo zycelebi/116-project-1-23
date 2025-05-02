@@ -1,7 +1,7 @@
 import java.util.HashSet;
 import java.util.Set;
 
-class Symbols extends Elements implements clear{
+class Symbols extends Elements implements clear, PRINT{
     private Set<String> symbols=new HashSet<>();
 
     public Symbols(){
@@ -47,5 +47,17 @@ class Symbols extends Elements implements clear{
     public boolean isValid(String symbol) {
         return symbol.matches("[a-zA-Z0-9]+");
     }
+
+    @Override
+    public void printToFile(String filename) {
+        try (FileWriter writer = new FileWriter(filename, true)) {
+            for (String symbol : symbols) {
+                writer.write("SYMBOLS " + symbol);
+            }
+        } catch (IOException e) {
+            System.out.println("Error: Cannot write symbols to file " + filename);
+        }
+    }
+}
 
 }
