@@ -1,7 +1,7 @@
 import java.util.HashSet;
 import java.util.Set;
 
-class Symbols extends Elements implements clear, PRINT{
+class Symbols extends Elements implements clear, Print{
     private Set<String> symbols=new HashSet<>();
 
     public Symbols(){
