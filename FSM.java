@@ -1,3 +1,7 @@
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Map;
+
 java.io.FileWriter;
 
 public class FSM implements Methods{
@@ -50,6 +54,29 @@ public class FSM implements Methods{
     }catch (Exception e){
       System.out.println("Error: File cannot be close.");
     }
+  }
+  @Override
+  public void printFile(String filename) {
+      try (FileWriter writer = new FileWriter(filename)) {
+          writer.write("SYMBOLS: " + symbols + "\n");
+          writer.write("STATES: " + states + "\n");
+          writer.write("INITIAL STATE: " + initialState + "\n");
+          writer.write("FINAL STATES: " + finalStates + "\n");
+          writer.write("TRANSITIONS:\n");
+
+          for (Map.Entry<String, Map<String, String>> fromState : transitions.entrySet()) {
+              for (Map.Entry<String, String> symbolTo : fromState.getValue().entrySet()) {
+                  String line = "(" + fromState.getKey() + ", " + symbolTo.getKey() + ") -> " + symbolTo.getValue();
+                  writer.write(line + "\n");
+              }
+          }
+
+          System.out.println("FSM printed to file: " + filename);
+      } catch (IOException e) {
+          System.out.println("Error writing to file: " + e.getMessage());
+      }
+  }
+
       
 
 
