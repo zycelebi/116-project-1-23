@@ -53,6 +53,8 @@ public class FSMDesigner {
         }else if (command.startsWith("PRINT ")) {
             String filename = command.substring(6, command.length() - 1).trim();
             fsm.printFile(filename);
+        }else if (command.equals("CLEAR;")) {
+            fsm.clear();
         }else {
             System.out.println("Warning: invalid command;");
         }
