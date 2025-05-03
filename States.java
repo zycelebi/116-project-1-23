@@ -2,7 +2,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 
-class States extends Elements implements clear, Print{
+class States extends Elements implements Clear, Print{
     private Set<String> states = new HashSet<>();
     private Set<String> finalStates = new HashSet<>();
     private String initialState;
