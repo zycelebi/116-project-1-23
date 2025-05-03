@@ -85,3 +85,25 @@ public class FSMDesigner {
         System.out.println("Printing FSM state...");
     }
 }
+/* import java.util.Scanner;
+
+public class FSM {
+    private static Symbols symbols = new Symbols();
+    private static States states = new States();
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("FSM DESIGNER 2.3 March 3, 2025, 16:04");
+
+        while (true) {
+            System.out.print("? ");
+            String inputLine = scanner.nextLine().trim();
+
+            if (inputLine.equalsIgnoreCase("EXIT")) {
+                break;
+            }
+
+            handleCommand(inputLine);
+        }
+    }
+*/
