@@ -1,3 +1,3 @@
 interface Clear{
-  void Clear();
+  void clear();
 }
