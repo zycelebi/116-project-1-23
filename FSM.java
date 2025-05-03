@@ -17,7 +17,8 @@ public class FSM implements Methods{
   public void exit(){
     System.out.println("TERMINATED BY USER");
     logged=false;
-    break;
+    System.exit(0);
+    //for errors System.exit(1); maybe
   }
 
   @Override
