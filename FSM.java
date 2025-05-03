@@ -5,7 +5,7 @@ import java.util.Map;
 java.io.FileWriter;
 
 public class FSM implements Methods{
-  private Symbols symbols;//or protected?
+  private Symbols symbols;
   private States states;
   private Transitions transitions;
   private boolean logged;
@@ -28,7 +28,7 @@ public class FSM implements Methods{
   @Override
   public void log(String filename){
     FileWriter writer=new FileWriter();
-    //writer.write();
+  
     try{
       if(filename==null){//logged or filename first?
         if(logged=true){
