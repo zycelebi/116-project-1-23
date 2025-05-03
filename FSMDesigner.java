@@ -50,7 +50,10 @@ public class FSMDesigner {
             handleTransitions(command.substring(11).trim());
         } else if (command.equalsIgnoreCase("PRINT")) {
             handlePrint();
-        } else {
+        }else if (command.startsWith("PRINT ")) {
+            String filename = command.substring(6, command.length() - 1).trim();
+            fsm.printFile(filename);
+        }else {
             System.out.println("Warning: invalid command;");
         }
     }
