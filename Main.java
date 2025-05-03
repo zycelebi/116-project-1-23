@@ -1,6 +1,6 @@
 import java.util.Scanner;
 
-public class FSMDesigner {
+public class Main {
     private static final Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
