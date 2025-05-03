@@ -76,10 +76,14 @@ public class FSM implements Methods{
           System.out.println("Error writing to file: " + e.getMessage());
       }
   }
-
-      
-
-
-
+  @Override
+  public void clear() {
+      symbols.clear();
+      states.clear();
+      finalStates.clear();
+      transitions.clear();
+      initialState = null;
+      System.out.println("FSM cleared.");
+  }
 
 }
