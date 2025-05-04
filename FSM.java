@@ -9,6 +9,7 @@ public class FSM implements Methods{
   private States states;
   private Transitions transitions;
   private boolean logged;
+  private FileWriter logWriter;
   
 
   public FSM(){
@@ -27,26 +28,27 @@ public class FSM implements Methods{
 
   @Override
   public void log(String filename){
-    FileWriter writer=new FileWriter();
+    //FileWriter writer=new FileWriter();
   
     try{
       if(filename==null){//logged or filename first?
         if(logged=true){
+          logWriter.close();
           System.out.println("STOPPED LOGGING");
           logged=false;
-          exit();
         }else{
           System.out.pritnln("LOGGING was not enabled");
         }
-      }else{
+      }else{ //
         if(logged=true){
-          exit();
+          logWriter.close();
         }
 
-      try{
-        writer = new FileWriter(filename);
-        logged = true;
-      } catch (Exception e){
+      logWriter = new FileWriter(filename, false);  // false to overwrite the file
+                isLogging = true;
+                System.out.println("LOGGING STARTED: " + filename);
+            }
+        }  catch (Exception e){
         logged=false;
         System.out.println("Error: File cannot be created or written.");
       }
