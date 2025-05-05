@@ -1,4 +1,4 @@
-public class TerminalInterface {
+public class Terminal {
     private final Scanner scanner = new Scanner(System.in);
 
     public void startREPL() {
