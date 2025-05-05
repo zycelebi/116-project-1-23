@@ -1,6 +1,12 @@
 import java.util.HashSet;
 import java.util.Set;
 
+public class ExistingSymbolException extends Exception { 
+    public ExistingSymbolException(String message) {
+        super(message);
+    }
+}
+
 class Symbols extends Elements implements Clear, Print{
     private Set<String> symbols=new HashSet<>();
 
