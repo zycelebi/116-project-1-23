@@ -33,6 +33,18 @@ class Symbols extends Elements implements Clear, Print{
         }
     }
 
+    public void handleSymbols(String input) throws ExistingSymbolException {
+        if (input.isBlank()) {
+            printSymbols();
+            return;
+        }
+
+        String[] array = input.trim().split("\\s+");
+        for (String s : array) {
+            addSymbol(s);
+        }
+    }
+    
     private void printSymbols() {
         if (symbols.isEmpty()) {
             System.out.println("No symbols declared!");
