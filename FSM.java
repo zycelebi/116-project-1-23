@@ -45,7 +45,7 @@ public class FSM implements Methods{
         }
 
       logWriter = new FileWriter(filename, false);  // false to overwrite the file
-                isLogging = true;
+                logged = true;
                 System.out.println("LOGGING STARTED: " + filename);
             }
         }  catch (Exception e){
