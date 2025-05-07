@@ -10,14 +10,58 @@ public class FSM implements Methods{
   private Transitions transitions;
   private boolean logged;
   private FileWriter logWriter;
-  
+  private String initialState; 
+  private Set<String> finalStates; 
 
   public FSM(){
     this.symbols=new Symbols();
     this.states=new States();
-    this.transitions=new Transitions();
+    this.transitions=new Transitions(states, symbols);
+    this.finalStates=new HashSet<>();
+    this.initialState=null;
   }
 
+  public Symbols getSymbols() {
+        return symbols;
+    }
+
+    public void setSymbols(Symbols symbols) {
+        this.symbols = symbols;
+    }
+
+    public States getStates() {
+        return states;
+    }
+
+    public void setStates(States states) {
+        this.states = states;
+    }
+
+    public Transitions getTransitions() {
+        return transitions;
+    }
+
+    public void setTransitions(Transitions transitions) {
+        this.transitions = transitions;
+    }
+
+    public String getInitialState() {
+        return initialState;
+    }
+
+    public void setInitialState(String initialState) {
+        this.initialState = initialState;
+    }
+
+    public Set<String> getFinalStates() {
+        return finalStates;
+    }
+
+    public void setFinalStates(Set<String> finalStates) {
+        this.finalStates = finalStates;
+    }
+
+  
   @Override
   public void exit(){
     System.out.println("TERMINATED BY USER");
@@ -26,37 +70,58 @@ public class FSM implements Methods{
     //for errors System.exit(1); maybe
   }
 
-  @Override
-  public void log(String filename){
-    //FileWriter writer=new FileWriter();
-  
-    try{
-      if(filename==null){//logged or filename first?
-        if(logged=true){
-          logWriter.close();
-          System.out.println("STOPPED LOGGING");
-          logged=false;
-        }else{
-          System.out.pritnln("LOGGING was not enabled");
-        }
-      }else{ //
-        if(logged=true){
-          logWriter.close();
-        }
-
-      logWriter = new FileWriter(filename, false);  // false to overwrite the file
-                logged = true;
-                System.out.println("LOGGING STARTED: " + filename);
+ public void writeLog(String text) {
+        if (logged && logWriter != null) {
+            try {
+                logWriter.write(text + System.lineSeparator());
+                logWriter.flush();
+            } catch (IOException e) {
+                System.out.println("Error: Cannot write log: " + e.getMessage());
             }
-        }  catch (Exception e){
-        logged=false;
-        System.out.println("Error: File cannot be created or written.");
-      }
-      }
-    }catch (Exception e){
-      System.out.println("Error: File cannot be close.");
+        }
     }
-  }
+
+
+    @Override
+    public void log(String input) {
+        if (input.isBlank()) {
+            if (logged) {
+                try {
+                    logWriter.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                logWriter = null;
+                logged = false;
+                System.out.println("STOPPED LOGGING");
+            } else {
+                System.out.println("LOGGING was not enabled");
+            }
+        } else {
+            String filename = input.trim();
+
+            if (logged) {
+                try {
+                    logWriter.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            try {
+                logWriter = new FileWriter(filename, false);
+                logged = true;
+                logWriter.flush();
+            } catch (IOException e) {
+                logged = false;
+                logWriter = null;
+                System.out.println("Error: Cannot write to file '" + filename + "'");
+            }
+        }
+    }
+
+    
+
   @Override
   public void printFile(String filename) {
       try (FileWriter writer = new FileWriter(filename)) {
