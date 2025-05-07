@@ -1,173 +1,128 @@
-import java.util.Scanner;
-
 public class Main {
+
     private static final Scanner scanner = new Scanner(System.in);
+    private static FSM fsm=new FSM();
+    private static States states=new States();
+    private static Symbols symbols=new Symbols();
+    private static Transitions transitions=new Transitions(states, symbols);
+    private static CommandParser c=new CommandParser();
+    private static Terminal terminal = new Terminal(fsm, c);
+
 
     public static void main(String[] args) {
-       
+        String version = "FSM DESIGNER v2.3";
 
-        while (true) {
-            System.out.print("? "); // başa ? koyar
+        LocalDateTime now = LocalDateTime.now();
 
-            String input = scanner.nextLine().trim();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM d, yyyy, HH:mm", Locale.ENGLISH);
 
-            if (input.equalsIgnoreCase("EXIT")) {
-                break;
-            }
+        String formattedDateTime = now.format(formatter);
 
-            if (input.isBlank()) {
-                continue;
-            }
+        String output = version + " " + formattedDateTime;
 
+        System.out.println(output);
+
+        if (args.length == 0) {
+            System.out.println("Error: No file name provided.");
+            System.out.println("Usage: java Main <filename>");
+            terminal.startREPL();
+        } else {
+            String file = args[0];
             try {
-                processCommand(input);
+                terminal.processFile(new File(file));
+                System.out.println("FSM built from script: " + file);
+                terminal.startREPL();
             } catch (Exception e) {
                 System.out.println("Error: " + e.getMessage());
             }
         }
 
+        String file = args[0];
+        try{
+            fsm.loadFromScript(file);
+        }catch(IOException e){
+            System.out.println(e.getMessage());
+        }
+
+        try(BufferedReader reader=new BufferedReader(new FileReader(file))) {
+            while (true) {
+                System.out.print("?"); // başa ? koyar
+
+                String input = scanner.nextLine().trim();
+
+                fsm.writeLog(">> " + input);
+
+
+                if (input.isBlank()) {
+                    continue;
+                }
+
+                try {
+                    c.parseAndExecute(input,fsm);
+                } catch (Exception e) {
+                    System.out.println("Error: " + e.getMessage());
+                    fsm.writeLog("Error: " + e.getMessage());
+                }
+            }
+        }catch(IOException e){
+            System.out.println(e.getMessage());
+        }
+
         System.out.println("Exiting FSM Designer...");
     }
 
-    private static void processCommand(String input) {
-       
-        if (!input.endsWith(";")) {
-            System.out.println("Warning: invalid command;");
-            return;
-        }
-
-        String command = input.substring(0, input.length() - 1).trim();
-
-        if (command.toUpperCase().startsWith("SYMBOLS")) {
-            handleSymbols(command.substring(7).trim());
-        } else if (command.toUpperCase().startsWith("INITIAL-STATE")) {
-            handleInitialState(command.substring(14).trim());
-        } else if (command.toUpperCase().startsWith("FINAL-STATES")) {
-            handleFinalStates(command.substring(13).trim());
-        } else if (command.toUpperCase().startsWith("STATES")) {
-            handleStates(command.substring(6).trim());
-        } else if (command.toUpperCase().startsWith("TRANSITIONS")) {
-            handleTransitions(command.substring(11).trim());
-        } else if (command.equalsIgnoreCase("PRINT")) {
-            handlePrint();
-        }else if (command.startsWith("PRINT ")) {
-            String filename = command.substring(6, command.length() - 1).trim();
-            fsm.printFile(filename);
-        }else if (command.equals("CLEAR;")) {
-            fsm.clear();
-        }else {
-            System.out.println("Warning: invalid command;");
-        }
-    }
-
-    private static void handleSymbols(String args) {
-        
-        System.out.println("Handling SYMBOLS: " + args);
-    }
-
-    private static void handleInitialState(String arg) {
-        
-        System.out.println("Handling INITIAL-STATE: " + arg);
-    }
-
-    private static void handleFinalStates(String args) {
-        
-        System.out.println("Handling FINAL-STATES: " + args);
-    }
-
-    private static void handleStates(String args) {
-        
-        System.out.println("Handling STATES: " + args);
-    }
-
-    private static void handleTransitions(String args) {
-      
-        System.out.println("Handling TRANSITIONS: " + args);
-    }
-
-    private static void handlePrint() {
-       
-        System.out.println("Printing FSM state...");
-    }
-}
-/* import java.util.Scanner;
-
-public class FSM {
-    private static Symbols symbols = new Symbols();
-    private static States states = new States();
-
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("FSM DESIGNER 2.3 March 3, 2025, 16:04");
-
-        while (true) {
-            System.out.print("? ");
-            String inputLine = scanner.nextLine().trim();
-
-            if (inputLine.equalsIgnoreCase("EXIT")) {
-                break;
-            }
-
-            handleCommand(inputLine);
-        }
-    }private static void handleCommand(String inputLine) {
-        if (!inputLine.endsWith(";")) {
-            System.out.println("Warning: invalid command;");
-            return;
-        }
-
-        String commandLine = inputLine.substring(0, inputLine.length() - 1).trim();
-        if (commandLine.isEmpty()) {
-            System.out.println("Warning: empty command;");
-            return;
-        }
-
-        String[] parts = commandLine.split("\\s+", 2);
-        String command = parts[0].toUpperCase();
-        String arguments = parts.length > 1 ? parts[1] : "";
-
-        switch (command) {
-            case "SYMBOLS":
-                handleSymbols(arguments);
-                break;
-            case "STATES":
-                states.handleStates(arguments);
-                break;
-            case "INITIAL-STATE":
-                states.handleInitialState(arguments);
-                break;
-            case "FINAL-STATES":
-                states.handleFinalStates(arguments);
-                break;
-            case "PRINT":
-                handlePrint();
-                break;
-            default:
-                System.out.println("Warning: invalid command;");
-        }
-    }
-
     private static void handleSymbols(String input) {
-        String[] tokens = input.trim().split("\\s+");
-        for (String token : tokens) {
-            try {
-                symbols.addSymbol(token);
-            } catch (ExistingSymbolException e) {
-                System.out.println(e.getMessage());
-            }
-        }
 
-        if (input.isBlank()) {
-            symbols.printSymbols();
+        try {
+            System.out.println("Handling SYMBOLS: " +"\n");
+            symbols.handleSymbols(input);
+        } catch (ExistingSymbolException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void handleInitialState(String input) {
+        try {
+            System.out.println("Handling INITIAL-STATE: " + "\n");
+            states.handleInitialState(input);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void handleFinalStates(String input) {
+        try {
+            System.out.println("Handling FINAL-STATES: " + "\n");
+            states.handleFinalStates(input);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void handleStates(String input) {
+        try {
+            System.out.println("Handling STATES: " + "\n");
+            states.handleStates(input);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void handleTransitions(String input) {
+        try {
+            System.out.println("Handling TRANSITIONS: " + "\n");
+            transitions.handleTransitions(input);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
     private static void handlePrint() {
-        System.out.println("SYMBOLS " + symbols.getSymbols());
-        System.out.println("STATES " + states.getStates());
-        System.out.println("INITIAL STATE " + states.getInitialState());
-        System.out.println("FINAL STATES " + states.getFinalStates());
-        // TRANSITIONS kısmı eklenecek
+        try {
+            System.out.println("Printing FSM state...");
+            fsm.printFile("output.txt");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
-*/
