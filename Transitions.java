@@ -80,19 +80,20 @@ class Transitions extends Elements implements Clear, Print {
             return;
         }
 
-        String[] lines = input.trim().split("\\s*;\\s*"); 
-
-        for (String line : lines) {
-            String[] parts = line.trim().split("\\s+");
+       String[] transitionArray = input.split("\\s*,\\s*");
+        for (String transition : transitionArray) {
+            String[] parts = transition.trim().split("\\s+");
             if (parts.length != 3) {
-                System.out.println("Warning: Invalid transition format, should be 'fromState symbol toState'. Ignored: " + line);
+                System.out.println("Warning: Invalid transition format, should be 'symbol fromState toState'. Ignored: " + transition);
                 continue;
             }
-            String fromState = parts[0];
-            String symbol = parts[1];
+
+            String symbol = parts[0];
+            String fromState = parts[1];
             String toState = parts[2];
             addTransition(fromState, symbol, toState);
         }
+    }
     }
 
     private void printTransitions() {
