@@ -1,5 +1,4 @@
 import java.io.*;
-import java.sql.SQLOutput;
 import java.time.format.DateTimeFormatter;
 import java.util.Scanner;
 import java.nio.file.Files;
@@ -215,8 +214,10 @@ class CommandParser {
                 fsm.exit();
             }
             else if(command.toUpperCase().startsWith("EXECUTE")){
-                fsm.execute(command);
-            }else if(command.toUpperCase().startsWith("LOAD")){
+                String input = command.substring(7).trim(); // "EXECUTE" kelimesinden sonrasını al
+                fsm.execute(input); // sadece 123 gibi giriş dizisini gönder
+            }
+            else if(command.toUpperCase().startsWith("LOAD")){
 
                 try{
                     fsm.loadFromScript(command.substring(4).trim());
@@ -376,11 +377,6 @@ class FSM implements Methods {
             return;
         }
 
-        // Check for invalid filename characters
-        if (!isValidFilename(filename)) {
-            System.out.println("Error: Invalid filename '" + filename + "'. Filenames cannot contain characters like \\ / : * ? \" < > |.");
-            return;
-        }
 
         // Check if the file can be created or overwritten
         File file = new File(filename);
@@ -438,15 +434,6 @@ class FSM implements Methods {
         }
     }
 
-    // Helper method to validate filename
-    private boolean isValidFilename(String filename) {
-        if (filename == null) {
-            return false;
-        }
-        // Basic check for invalid characters (platform-independent)
-        String invalidChars = "[\\\\/:*?\"<>|]";
-        return !filename.matches(".*" + invalidChars + ".*");
-    }
     public void printToConsole() {
         System.out.print("SYMBOLS {" + (symbols.getSymbols().isEmpty() ? "None" : String.join(" ", symbols.getSymbols())));
         System.out.println("}");
@@ -478,38 +465,61 @@ class FSM implements Methods {
         transitions.clear();
         System.out.println("FSM cleared.");
     }
+
+
     public void execute(String input) {
-        if (states.getInitialState() == null || states.getFinalStates() == null || transitions == null) {
+
+        if (states == null || states.getInitialState() == null || states.getFinalStates() == null || transitions == null || symbols == null) {
             System.out.println("Error: FSM is not fully defined.");
+            writeLog("Error: FSM is not fully defined.");
             return;
         }
+        String[] inputSymbols;
+        if (input.contains(" ")) {
+            inputSymbols = input.trim().split("\\s+");
+        } else {
+            inputSymbols = input.trim().split(""); 
+        }
 
-        String currentState = String.valueOf(states.getInitialState());
-        System.out.print(currentState);
+        String currentState = states.getInitialState().toUpperCase(); 
+        List<String> stateSequence = new ArrayList<>();
+        stateSequence.add(currentState);
 
-        for (char ch : input.toCharArray()) {
-            String symbol = String.valueOf(ch);
 
+       
+        for (String symbol : inputSymbols) {
+
+
+            
             if (!symbols.getSymbols().contains(symbol)) {
-                System.out.println("\nError: Symbol '" + symbol + "' is not declared.");
+                System.out.println("Error: Symbol '" + symbol + "' is not declared.");
+                writeLog("Error: Symbol '" + symbol + "' is not declared.");
                 return;
             }
 
+            
             Map<String, String> symbolMap = transitions.getTransitions().get(currentState);
             if (symbolMap == null || !symbolMap.containsKey(symbol)) {
-                System.out.println("\nError: No transition from state '" + currentState + "' with symbol '" + symbol + "'.");
+                System.out.println("Error: No transition from state '" + currentState + "' with symbol '" + symbol + "'.");
+                writeLog("Error: No transition from state '" + currentState + "' with symbol '" + symbol + "'.");
                 return;
             }
 
-            currentState = symbolMap.get(symbol);
-            System.out.print(" " + currentState);
+          
+            currentState = symbolMap.get(symbol).toUpperCase();
+            stateSequence.add(currentState);
+
         }
 
-        if (states.getFinalStates().contains(currentState)) {
-            System.out.println(" YES");
-        } else {
-            System.out.println(" NO");
-        }
+     
+        String output = String.join(" ", stateSequence);
+
+        boolean isAccepting = states.getFinalStates() != null && states.getFinalStates().contains(currentState);
+        output += isAccepting ? " YES" : " NO";
+
+
+        System.out.println(output);
+        writeLog(output);
     }
     public void saveToBinary(FSM fsm, String filePath) throws IOException {
         try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filePath))) {
