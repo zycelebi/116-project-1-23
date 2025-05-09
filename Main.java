@@ -56,6 +56,8 @@ public class Main {
         try(BufferedReader reader=new BufferedReader(new FileReader(file))) {
             while (true) {
                 System.out.print("?"); // başa ? koyar
+                                
+                fsm.writeLog("?");
 
                 String input = scanner.nextLine().trim();
 
@@ -75,15 +77,20 @@ public class Main {
             }
         }catch(IOException e){
             System.out.println(e.getMessage());
+            fsm.writeLog(e.getMessage());
+
         }
 
         System.out.println("Exiting FSM Designer...");
+        fsm.writeLog("Exiting FSM Designer...");
+
     }
 
     private static void handleSymbols(String input) {
 
         try {
             System.out.println("Handling SYMBOLS: " +"\n");
+            fsm.writeLog("Handling SYMBOLS: " +"\n");
             symbols.handleSymbols(input);
         } catch (ExistingSymbolException e) {
             throw new RuntimeException(e);
@@ -93,6 +100,8 @@ public class Main {
     private static void handleInitialState(String input) {
         try {
             System.out.println("Handling INITIAL-STATE: " + "\n");
+            fsm.writeLog("Handling INITIAL-STATE: " + "\n");
+
             states.handleInitialState(input);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -102,6 +111,8 @@ public class Main {
     private static void handleFinalStates(String input) {
         try {
             System.out.println("Handling FINAL-STATES: " + "\n");
+            fsm.writeLog("Handling FINAL-STATES: " + "\n");
+
             states.handleFinalStates(input);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -111,6 +122,8 @@ public class Main {
     private static void handleStates(String input) {
         try {
             System.out.println("Handling STATES: " + "\n");
+            fsm.writeLog("Handling STATES: " + "\n");
+
             states.handleStates(input);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -120,6 +133,8 @@ public class Main {
     private static void handleTransitions(String input) {
         try {
             System.out.println("Handling TRANSITIONS: " + "\n");
+            fsm.writeLog("Handling TRANSITIONS: " + "\n");
+
             transitions.handleTransitions(input);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -129,6 +144,7 @@ public class Main {
     private static void handlePrint() {
         try {
             System.out.println("Printing FSM state...");
+            fsm.writeLog("Printing FSM state...");
             fsm.printFile("output.txt");
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -152,6 +168,8 @@ class CommandParser {
         command = command.trim();
         if (!command.endsWith(";")) {
             System.out.println("Warning: command must end with ';'");
+            fsm.writeLog("Warning: command must end with ';'");
+
             return;
         }
 
@@ -188,7 +206,9 @@ class CommandParser {
             } else if (command.equalsIgnoreCase("CLEAR")) {
                 fsm.clear();
             }else if (command.toUpperCase().startsWith("LOG")) {
-                fsm.log(command.substring(3).trim());
+                //fsm.log(command.substring(3).trim());
+                String filename = command.substring(3).trim();
+                fsm.log(filename);
             }
             else if(command.equalsIgnoreCase("EXIT")) {
                 fsm.exit();
@@ -207,9 +227,13 @@ class CommandParser {
             }
             else {
                 System.out.println("Warning: unknown command: " + command);
+                fsm.writeLog("Warning: unknown command: " + command);
+
             }
         } catch (Exception e) {
             System.out.println("Error while parsing command: " + e.getMessage());
+            fsm.writeLog("Error while parsing command: " + e.getMessage());
+
         }
     }
 }
@@ -238,7 +262,8 @@ class FSM implements Methods {
     private Symbols symbols;
     private States states;
     private Transitions transitions;
-
+    private States initialState;
+    private States finalStates;
     private boolean logged;
     private FileWriter logWriter;
 
@@ -269,6 +294,8 @@ class FSM implements Methods {
         this.symbols = new Symbols();
         this.states = new States();
         this.transitions = new Transitions(states, symbols);
+        this.finalStates=new States();
+        this.initialState=new States();
     }
     public static FSM loadFromScript(String filePath) throws IOException {
         List<String> commands = Files.readAllLines(Paths.get(filePath));
@@ -277,6 +304,7 @@ class FSM implements Methods {
             CommandParser.parseAndExecute(command, fsm);
         }
         System.out.println("FSM built from script: " + filePath);
+        fsm.writeLog("FSM built from script: " + filePath);
         return fsm;
     }
 
@@ -302,6 +330,7 @@ class FSM implements Methods {
     @Override
     public void log(String input) {
         if (input.isBlank()) {
+            // LOG; → stop logging
             if (logged) {
                 try {
                     logWriter.close();
@@ -317,6 +346,7 @@ class FSM implements Methods {
         } else {
             String filename = input.trim();
 
+            // Eğer daha önce log vardıysa kapat
             if (logged) {
                 try {
                     logWriter.close();
@@ -326,7 +356,7 @@ class FSM implements Methods {
             }
 
             try {
-                logWriter = new FileWriter(filename, false);
+                logWriter = new FileWriter(filename, false); // overwrite
                 logged = true;
                 logWriter.flush();
             } catch (IOException e) {
@@ -436,12 +466,16 @@ class FSM implements Methods {
         try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filePath))) {
             out.writeObject(fsm);
             System.out.println("FSM compiled and saved to binary: " + filePath);
+            fsm.writeLog("FSM compiled and saved to binary: " + filePath);
+
         }
     }
     public void loadFromBinary(String filePath) throws IOException, ClassNotFoundException {
         try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(filePath))) {
             FSM fsm = (FSM) in.readObject();
             System.out.println("FSM loaded from binary: " + filePath);
+            fsm.writeLog("FSM loaded from binary: " + filePath);
+
         }
     }
 }
@@ -660,6 +694,8 @@ class States extends Elements implements Clear, Print {
 
 class Symbols extends Elements implements Clear, Print{
     private Set<String> symbols=new HashSet<>();
+    private static FSM fsm=new FSM();
+
 
     public Symbols(){
         this.symbols=symbols;
@@ -675,9 +711,11 @@ class Symbols extends Elements implements Clear, Print{
     private void addSymbol(String name) throws ExistingSymbolException{
         if(isValid(name)==false){
             System.out.println("Warning: Symbol is not alphanumeric, it will be ignored!");
-            return;
+            fsm.writeLog("Warning: Symbol is not alphanumeric, it will be ignored!");
+        return;
         }
         if (symbols.contains(name)){
+            fsm.writeLog("Warning: Symbol '" + name + "' exists!");
             throw new ExistingSymbolException("Warning: Symbol '" + name + "' exists!");
         } else {
             symbols.add(name);
@@ -687,11 +725,17 @@ class Symbols extends Elements implements Clear, Print{
     private void printSymbols() {
         if (symbols.isEmpty()) {
             System.out.println("No symbols declared!");
+            fsm.writeLog("No symbols declared!");
+
             return;
         }
         System.out.println("Declared symbols:");
+        fsm.writeLog("Declared symbols: ");
+
         for (String s: symbols) {
             System.out.println(s);
+            fsm.writeLog(s);
+
         }
     }
     @Override
@@ -703,6 +747,8 @@ class Symbols extends Elements implements Clear, Print{
     public void clear(){
         symbols.clear();
         System.out.println("FSM cleared.");
+        fsm.writeLog("FSM cleared.");
+
     }
 
     @Override
@@ -714,11 +760,16 @@ class Symbols extends Elements implements Clear, Print{
     public void printToFile(String filename) {
         try (FileWriter writer = new FileWriter(filename, true)) {
             writer.write("SYMBOLS: ");
+            fsm.writeLog("SYMBOLS ");
+
             for (String symbol : symbols) {
                 writer.write(symbol+" ");
+                fsm.writeLog(symbol+" ");
             }
             writer.write("\n");
+            fsm.writeLog("\n");
         } catch (IOException e) {
+            fsm.writeLog("Error: Cannot write symbols to file " + filename);
             System.out.println("Error: Cannot write symbols to file " + filename);
         }
     }
@@ -883,11 +934,14 @@ class Terminal {
     public void startREPL() {
         StringBuilder commandBuffer = new StringBuilder();
         System.out.print("? ");
+        fsm.writeLog("? ");
+
         while (scanner.hasNextLine()) {
             String line = scanner.nextLine().trim();
 
             if (line.startsWith(";")) {
                 System.out.print("? ");
+                fsm.writeLog("? ");
                 continue;
             }
 
@@ -898,6 +952,7 @@ class Terminal {
                 c.parseAndExecute(fullCommand, fsm);
                 commandBuffer.setLength(0);
                 System.out.print("? ");
+                fsm.writeLog("? ");
             }
         }
     }
@@ -917,7 +972,13 @@ class Terminal {
                 }
             }
         } catch (IOException e) {
+            fsm.writeLog("Error reading file: " + e.getMessage());
             System.err.println("Error reading file: " + e.getMessage());
         }
+    }
+}
+class ExistingSymbolException extends Exception{
+    public ExistingSymbolException(String message){
+        super(message);
     }
 }
