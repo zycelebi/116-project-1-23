@@ -56,7 +56,7 @@ public class Main {
         try(BufferedReader reader=new BufferedReader(new FileReader(file))) {
             while (true) {
                 System.out.print("?"); // başa ? koyar
-                                
+
                 fsm.writeLog("?");
 
                 String input = scanner.nextLine().trim();
@@ -191,8 +191,8 @@ class CommandParser {
             } else if (command.toUpperCase().startsWith("TRANSITIONS")) {
                 String transitions = command.substring(11).trim();
                 fsm.getTransitions().handleTransitions(transitions);
-            } else if (command.equalsIgnoreCase("PRINT")) {
-                String[] parts = command.split("\\s+", 2);
+            } else if (command.toUpperCase().startsWith("PRINT")) {
+                String[] parts = command.split("\\s+");
                 if (parts.length == 1) {
                     fsm.printToConsole();
                 } else {
@@ -203,7 +203,8 @@ class CommandParser {
                     }
                     fsm.printFile(filename);
                 }
-            } else if (command.equalsIgnoreCase("CLEAR")) {
+            }
+            else if (command.equalsIgnoreCase("CLEAR")) {
                 fsm.clear();
             }else if (command.toUpperCase().startsWith("LOG")) {
                 //fsm.log(command.substring(3).trim());
@@ -213,16 +214,16 @@ class CommandParser {
             else if(command.equalsIgnoreCase("EXIT")) {
                 fsm.exit();
             }
-            else if(command.startsWith("EXECUTE")){
+            else if(command.toUpperCase().startsWith("EXECUTE")){
                 fsm.execute(command);
-            }else if(command.startsWith("LOAD")){
+            }else if(command.toUpperCase().startsWith("LOAD")){
 
                 try{
                     fsm.loadFromScript(command.substring(4).trim());
                 }catch(IOException e){
                     System.out.println(e.getMessage());
                 }
-            }else if(command.equalsIgnoreCase("COMPILE")){
+            }else if(command.toUpperCase().startsWith("COMPILE")){
                 fsm.saveToBinary(fsm,command.substring(6).trim());
             }
             else {
@@ -369,34 +370,82 @@ class FSM implements Methods {
 
     @Override
     public void printFile(String filename) {
-        try (FileWriter writer = new FileWriter(filename)) {
-            if (!symbols.getSymbols().isEmpty()) {
-                writer.write("SYMBOLS " + String.join(" ", symbols.getSymbols()) + ";\n");
+        // Validate filename
+        if (filename == null || filename.trim().isEmpty()) {
+            System.out.println("Error: Filename is null or empty.");
+            return;
+        }
+
+        // Check for invalid filename characters
+        if (!isValidFilename(filename)) {
+            System.out.println("Error: Invalid filename '" + filename + "'. Filenames cannot contain characters like \\ / : * ? \" < > |.");
+            return;
+        }
+
+        // Check if the file can be created or overwritten
+        File file = new File(filename);
+        try {
+            // Ensure parent directory exists
+            if (file.getParent() != null && !file.getParentFile().exists()) {
+                System.out.println("Error: Directory '" + file.getParent() + "' does not exist.");
+                return;
             }
-            if (!states.getStates().isEmpty()) {
-                writer.write("STATES " + String.join(" ", states.getStates()) + ";\n");
+
+            // Check if file exists and is writable
+            if (file.exists() && !file.canWrite()) {
+                System.out.println("Error: Cannot write to file '" + filename + "'. File is read-only or access is denied.");
+                return;
             }
-            if (states.getInitialState() != null) {
-                writer.write("INITIAL-STATE " + states.getInitialState() + ";\n");
-            }
-            if (!states.getFinalStates().isEmpty()) {
-                writer.write("FINAL-STATES " + String.join(" ", states.getFinalStates()) + ";\n");
-            }
-            if (!transitions.getTransitions().isEmpty()) {
-                writer.write("TRANSITIONS ");
-                List<String> transitionList = new ArrayList<>();
-                for (Map.Entry<String, Map<String, String>> fromState : transitions.getTransitions().entrySet()) {
-                    String state = fromState.getKey();
-                    for (Map.Entry<String, String> symbolTo : fromState.getValue().entrySet()) {
-                        transitionList.add(symbolTo.getKey() + " " + state + " " + symbolTo.getValue());
-                    }
+
+            try (FileWriter writer = new FileWriter(file)) {
+                // Write SYMBOLS
+                if (!symbols.getSymbols().isEmpty()) {
+                    writer.write("SYMBOLS " + String.join(" ", symbols.getSymbols()) + ";\n");
                 }
-                writer.write(String.join(", ", transitionList) + ";\n");
+
+                // Write STATES
+                if (!states.getStates().isEmpty()) {
+                    writer.write("STATES " + String.join(" ", states.getStates()) + ";\n");
+                }
+
+                // Write INITIAL-STATE
+                if (states.getInitialState() != null) {
+                    writer.write("INITIAL-STATE " + states.getInitialState() + ";\n");
+                }
+
+                // Write FINAL-STATES
+                if (!states.getFinalStates().isEmpty()) {
+                    writer.write("FINAL-STATES " + String.join(" ", states.getFinalStates()) + ";\n");
+                }
+
+                // Write TRANSITIONS
+                if (!transitions.getTransitions().isEmpty()) {
+                    writer.write("TRANSITIONS ");
+                    List<String> transitionList = new ArrayList<>();
+                    for (Map.Entry<String, Map<String, String>> fromState : transitions.getTransitions().entrySet()) {
+                        String state = fromState.getKey();
+                        for (Map.Entry<String, String> symbolToState : fromState.getValue().entrySet()) {
+                            transitionList.add(symbolToState.getKey() + " " + state + " " + symbolToState.getValue());
+                        }
+                    }
+                    writer.write(String.join(", ", transitionList) + ";\n");
+                }
+
+                System.out.println("FSM commands written to file: " + filename);
             }
-            System.out.println("FSM commands written to file: " + filename);
         } catch (IOException e) {
             System.out.println("Error: Cannot create or write to file '" + filename + "': " + e.getMessage());
         }
+    }
+
+    // Helper method to validate filename
+    private boolean isValidFilename(String filename) {
+        if (filename == null) {
+            return false;
+        }
+        // Basic check for invalid characters (platform-independent)
+        String invalidChars = "[\\\\/:*?\"<>|]";
+        return !filename.matches(".*" + invalidChars + ".*");
     }
     public void printToConsole() {
         System.out.print("SYMBOLS {" + (symbols.getSymbols().isEmpty() ? "None" : String.join(" ", symbols.getSymbols())));
@@ -712,7 +761,7 @@ class Symbols extends Elements implements Clear, Print{
         if(isValid(name)==false){
             System.out.println("Warning: Symbol is not alphanumeric, it will be ignored!");
             fsm.writeLog("Warning: Symbol is not alphanumeric, it will be ignored!");
-        return;
+            return;
         }
         if (symbols.contains(name)){
             fsm.writeLog("Warning: Symbol '" + name + "' exists!");
@@ -817,7 +866,7 @@ class Transitions extends Elements implements Clear, Print {
     public Transitions(States states, Symbols symbols) {
         this.transitions = new HashMap<>();
         this.states = states;
-        this.symbols = symbols; 
+        this.symbols = symbols;
     }
 
     @Override
