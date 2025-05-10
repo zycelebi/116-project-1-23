@@ -84,71 +84,6 @@ public class Main {
         fsm.writeLog("Exiting FSM Designer...");
 
     }
-
-    private static void handleSymbols(String input) {
-
-        try {
-            System.out.println("Handling SYMBOLS: " +"\n");
-            fsm.writeLog("Handling SYMBOLS: " +"\n");
-            symbols.handleSymbols(input);
-        } catch (ExistingSymbolException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void handleInitialState(String input) {
-        try {
-            System.out.println("Handling INITIAL-STATE: " + "\n");
-            fsm.writeLog("Handling INITIAL-STATE: " + "\n");
-
-            states.handleInitialState(input);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void handleFinalStates(String input) {
-        try {
-            System.out.println("Handling FINAL-STATES: " + "\n");
-            fsm.writeLog("Handling FINAL-STATES: " + "\n");
-
-            states.handleFinalStates(input);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void handleStates(String input) {
-        try {
-            System.out.println("Handling STATES: " + "\n");
-            fsm.writeLog("Handling STATES: " + "\n");
-
-            states.handleStates(input);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void handleTransitions(String input) {
-        try {
-            System.out.println("Handling TRANSITIONS: " + "\n");
-            fsm.writeLog("Handling TRANSITIONS: " + "\n");
-
-            transitions.handleTransitions(input);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void handlePrint() {
-        try {
-            System.out.println("Printing FSM state...");
-            fsm.writeLog("Printing FSM state...");
-            fsm.printFile("output.txt");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 }
 interface Clear{
     void clear();
@@ -158,7 +93,7 @@ class CommandParser {
         if (filename == null || filename.trim().isEmpty()) {
             return false;
         }
-        return filename.matches("[a-zA-Z0-9_\\-\\.]+") && filename.endsWith(".txt");
+        return filename.matches("[a-zA-Z0-9_\\-\\.]+") && (filename.endsWith(".txt") || filename.endsWith(".fs"));
     }
 
     public static void parseAndExecute(String command, FSM fsm) {
@@ -166,9 +101,9 @@ class CommandParser {
 
         command = command.trim();
         if (!command.endsWith(";")) {
-            System.out.println("Warning: command must end with ';'");
-            fsm.writeLog("Warning: command must end with ';'");
-
+            String warningMsg = "Warning: command must end with ';'";
+            System.out.println(warningMsg);
+            fsm.writeLog(warningMsg + "\n");
             return;
         }
 
@@ -176,10 +111,15 @@ class CommandParser {
 
         try {
             fsm.writeLog("? " + command + ";");
+
+
+            // StringBuilder to collect system responses
             StringBuilder responseLog = new StringBuilder();
+
+            // Redirect System.out to capture output while printing to terminal
             PrintStream originalOut = System.out;
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            PrintStream tempOut = new PrintStream(baos);
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            PrintStream tempOut = new TerminalPrintStream(bytes, originalOut);
             System.setOut(tempOut);
 
             try {
@@ -206,7 +146,7 @@ class CommandParser {
                         String filename = parts[1].trim();
                         if (!isValidFilename(filename)) {
                             String errorMsg = "Error: Invalid filename '" + filename +
-                                    "'. Use alphanumeric characters and valid extensions (e.g., .txt).";
+                                    "'. Use alphanumeric characters and valid extensions (e.g., .txt, .fs).";
                             System.out.println(errorMsg);
                             responseLog.append(errorMsg).append("\n");
                             return;
@@ -224,38 +164,158 @@ class CommandParser {
                     String input = command.substring(7).trim();
                     fsm.execute(input);
                 } else if (command.toUpperCase().startsWith("LOAD")) {
+                    String[] parts = command.split("\\s+", 2);
+                    if (parts.length < 2) {
+                        String errorMsg = "Error: LOAD requires a filename.";
+                        System.out.println(errorMsg);
+                        responseLog.append(errorMsg).append("\n");
+                        return;
+                    }
+                    String filename = parts[1].trim();
+                    File file = new File(filename);
+                    if (!file.exists()) {
+                        String errorMsg = "LOAD error: File '" + filename + "' not found.";
+                        System.out.println(errorMsg);
+                        responseLog.append(errorMsg).append("\n");
+                        return;
+                    }
+                    if (!file.canRead()) {
+                        String errorMsg = "LOAD error: File '" + filename + "' is not readable.";
+                        System.out.println(errorMsg);
+                        responseLog.append(errorMsg).append("\n");
+                        return;
+                    }
                     try {
-                        fsm.loadFromScript(command.substring(4).trim());
+                        FSM loadedFSM;
+                        if (filename.endsWith(".fs")) {
+                            loadedFSM = FSM.loadFromBinary(filename);
+                        } else {
+                            loadedFSM = FSM.loadFromScript(filename);
+                        }
+                        fsm.copyFrom(loadedFSM);
+                        String successMsg = "Load successful: " + filename;
+                        System.out.println(successMsg);
+                    } catch (FileNotFoundException e) {
+                        String errorMsg = "LOAD error: File '" + filename + "' not found.";
+                        System.out.println(errorMsg);
+                        responseLog.append(errorMsg).append("\n");
+                    } catch (NotSerializableException e) {
+                        String errorMsg = "LOAD error: FSM or its components are not serializable (" + e.getMessage() + ")";
+                        System.out.println(errorMsg);
+                        responseLog.append(errorMsg).append("\n");
                     } catch (IOException e) {
-                        String errorMsg = e.getMessage();
+                        String errorMsg = "LOAD error: " + e.getMessage() + " (IOException)";
+                        System.out.println(errorMsg);
+                        responseLog.append(errorMsg).append("\n");
+                    } catch (ClassNotFoundException e) {
+                        String errorMsg = "LOAD error: Invalid binary file format (" + e.getMessage() + ")";
+                        System.out.println(errorMsg);
+                        responseLog.append(errorMsg).append("\n");
+                    } catch (Exception e) {
+                        String errorMsg = "LOAD error: " + e.getMessage() + " (" + e.getClass().getSimpleName() + ")";
+                        System.out.println(errorMsg);
                         responseLog.append(errorMsg).append("\n");
                     }
                 } else if (command.toUpperCase().startsWith("COMPILE")) {
-                    fsm.saveToBinary(fsm, command.substring(6).trim());
+                    String filename = command.substring(7).trim();
+                    if (filename.isEmpty()) {
+                        String errorMsg = "Error: COMPILE requires a filename.";
+                        System.out.println(errorMsg);
+                        responseLog.append(errorMsg).append("\n");
+                        return;
+                    }
+                    try {
+                        fsm.saveToBinary(filename);
+                        String successMsg = "Compile successful: " + filename;
+                        System.out.println(successMsg);
+                    } catch (NotSerializableException e) {
+                        String errorMsg = "COMPILE error: FSM or its components are not serializable (" + e.getMessage() + ")";
+                        System.out.println(errorMsg);
+                        responseLog.append(errorMsg).append("\n");
+                    } catch (IOException e) {
+                        String errorMsg = "COMPILE error: " + e.getMessage() + " (IOException)";
+                        System.out.println(errorMsg);
+                        responseLog.append(errorMsg).append("\n");
+                    } catch (Exception e) {
+                        String errorMsg = "COMPILE error: " + e.getMessage() + " (" + e.getClass().getSimpleName() + ")";
+                        System.out.println(errorMsg);
+                        responseLog.append(errorMsg).append("\n");
+                    }
                 } else {
                     String warningMsg = "Warning: unknown command: " + command;
                     System.out.println(warningMsg);
                     responseLog.append(warningMsg).append("\n");
                 }
+
+                // Capture and filter console output
                 tempOut.flush();
-                String consoleOutput = baos.toString();
+                String consoleOutput = bytes.toString();
                 if (!consoleOutput.isEmpty()) {
-                    responseLog.append(consoleOutput);
+                    String[] lines = consoleOutput.split("\n");
+                    Set<String> uniqueLines = new LinkedHashSet<>();
+                    for (String line : lines) {
+                        if (!line.startsWith("Warning:") &&
+                                !line.startsWith("Transition added:") &&
+                                !line.startsWith("FSM loaded from binary:") &&
+                                !line.startsWith("FSM compiled and saved to binary:") &&
+                                !line.startsWith("FSM built from script:")) {
+                            uniqueLines.add(line);
+                        }
+                    }
+                    for (String line : uniqueLines) {
+                        if (!line.trim().isEmpty()) {
+                            responseLog.append(line).append("\n");
+                        }
+                    }
                 }
 
             } finally {
+                // Restore original System.out
                 System.setOut(originalOut);
             }
 
+            // Log all collected responses
             if (responseLog.length() > 0) {
                 fsm.writeLog(responseLog.toString());
             }
 
         } catch (Exception e) {
-            String errorMsg = "Error while parsing command: " + e.getMessage();
+            String errorMsg = "Error while parsing command: " + e.getMessage() + " (" + e.getClass().getSimpleName() + ")";
             System.out.println(errorMsg);
-            fsm.writeLog(errorMsg);
+            fsm.writeLog(errorMsg + "\n");
         }
+    }
+}
+class TerminalPrintStream extends PrintStream {
+    private final PrintStream print;
+
+    public TerminalPrintStream(OutputStream out, PrintStream print) {
+        super(out);
+        this.print =print;
+    }
+
+    @Override
+    public void write(byte[] bytes, int start, int length) {
+        super.write(bytes, start, length);
+        print.write(bytes, start, length);
+    }
+
+    @Override
+    public void write(int b) {
+        super.write(b);
+        print.write(b);
+    }
+
+    @Override
+    public void flush() {
+        super.flush();
+        print.flush();
+    }
+
+    @Override
+    public void close() {
+        super.close();
+        print.close();
     }
 }
 abstract class Elements{
@@ -270,14 +330,23 @@ abstract class Elements{
     public abstract boolean isValid(String symbol);
 }
 
-class FSM implements Methods {
+class FSM implements Methods,Serializable {
+    private static final long serialVersionUID = 1L;
     private Symbols symbols;
     private States states;
     private Transitions transitions;
     private States initialState;
     private States finalStates;
     private boolean logged;
-    private FileWriter logWriter;
+    private transient FileWriter logWriter;
+    public void copyFrom(FSM other) {
+        this.states = other.states;
+        this.symbols = other.symbols;
+        this.transitions = other.transitions;
+        this.initialState = other.initialState;
+        this.finalStates = other.finalStates;
+
+    }
 
     public Symbols getSymbols() {
         return symbols;
@@ -445,21 +514,20 @@ class FSM implements Methods {
     }
 
     public void printToConsole() {
-        System.out.print("SYMBOLS {" + (symbols.getSymbols().isEmpty() ? "None" : String.join(" ", symbols.getSymbols())));
+        System.out.print("SYMBOLS {" + (symbols.getSymbols().isEmpty() ? "" : String.join(" ", symbols.getSymbols())));
         System.out.println("}");
-        System.out.print("STATES {" + (states.getStates().isEmpty() ? "None" : String.join(" ", states.getStates())));
+        System.out.print("STATES {" + (states.getStates().isEmpty() ? "" : String.join(" ", states.getStates())));
         System.out.println("}");
-        System.out.println("INITIAL STATE: " + (states.getInitialState()==null ? "None" : states.getInitialState()));
-        System.out.print("FINAL STATES {" + (states.getFinalStates().isEmpty() ? "None" : String.join(" ", states.getFinalStates()))+"}");
+        System.out.println("INITIAL STATE {" + (states.getInitialState()==null ? "" : states.getInitialState())+"}");
+        System.out.print("FINAL STATES {" + (states.getFinalStates().isEmpty() ? "" : String.join(" ", states.getFinalStates()))+"}");
         System.out.println();
-        System.out.print("TRANSITIONS ");
+        System.out.print("TRANSITIONS {");
         if (transitions.getTransitions().isEmpty()) {
-            System.out.println("  None");
+            System.out.println("}");
         } else {
             for (Map.Entry<String, Map<String, String>> fromState : transitions.getTransitions().entrySet()) {
                 String state = fromState.getKey();
                 for (Map.Entry<String, String> symbolTo : fromState.getValue().entrySet()) {
-                    //System.out.println("  (" + state + ", " + symbolTo.getKey() + ") -> " + symbolTo.getValue());
                     System.out.print(" "+symbolTo.getKey()+" "+ state+ " "+symbolTo.getValue()+", ");
                 }
                 System.out.println();
@@ -529,20 +597,17 @@ class FSM implements Methods {
 
         System.out.println(output);
     }
-    public void saveToBinary(FSM fsm, String filePath) throws IOException {
-        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filePath))) {
-            out.writeObject(fsm);
-            System.out.println("FSM compiled and saved to binary: " + filePath);
-            fsm.writeLog("FSM compiled and saved to binary: " + filePath);
+    public void saveToBinary(String filename) throws IOException {
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filename))) {
+            out.writeObject(this);
 
         }
     }
-    public void loadFromBinary(String filePath) throws IOException, ClassNotFoundException {
+    public static FSM loadFromBinary(String filePath) throws IOException, ClassNotFoundException {
         try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(filePath))) {
             FSM fsm = (FSM) in.readObject();
-            System.out.println("FSM loaded from binary: " + filePath);
             fsm.writeLog("FSM loaded from binary: " + filePath);
-
+            return fsm;
         }
     }
 }
@@ -562,7 +627,8 @@ interface Print {
 
 }
 
-class States extends Elements implements Clear, Print {
+class States extends Elements implements Clear, Print,Serializable {
+    private static final long serialVersionUID = 1L;
     private Set<String> states = new HashSet<>();
     private Set<String> finalStates = new HashSet<>();
     private String initialState;
@@ -756,7 +822,8 @@ class States extends Elements implements Clear, Print {
     }
 }
 
-class Symbols extends Elements implements Clear, Print{
+class Symbols extends Elements implements Clear, Print,Serializable{
+    private static final long serialVersionUID = 1L;
     private Set<String> symbols=new HashSet<>();
     private static FSM fsm=new FSM();
 
@@ -847,7 +914,8 @@ class Symbols extends Elements implements Clear, Print{
         }
     }
 }
-class Transitions extends Elements implements Clear, Print {
+class Transitions extends Elements implements Clear, Print,Serializable {
+    private static final long serialVersionUID = 1L;
     private Map<String, Map<String, String>> transitions = new HashMap<>();
     private States states;
     private Symbols symbols;
