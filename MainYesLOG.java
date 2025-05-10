@@ -55,14 +55,7 @@ public class Main {
         try(BufferedReader reader=new BufferedReader(new FileReader(file))) {
             while (true) {
                 System.out.print("?"); // başa ? koyar
-
-                fsm.writeLog("?");
-
                 String input = scanner.nextLine().trim();
-
-                fsm.writeLog(">> " + input);
-
-
                 if (input.isBlank()) {
                     continue;
                 }
@@ -84,71 +77,6 @@ public class Main {
         fsm.writeLog("Exiting FSM Designer...");
 
     }
-
-    private static void handleSymbols(String input) {
-
-        try {
-            System.out.println("Handling SYMBOLS: " +"\n");
-            fsm.writeLog("Handling SYMBOLS: " +"\n");
-            symbols.handleSymbols(input);
-        } catch (ExistingSymbolException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void handleInitialState(String input) {
-        try {
-            System.out.println("Handling INITIAL-STATE: " + "\n");
-            fsm.writeLog("Handling INITIAL-STATE: " + "\n");
-
-            states.handleInitialState(input);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void handleFinalStates(String input) {
-        try {
-            System.out.println("Handling FINAL-STATES: " + "\n");
-            fsm.writeLog("Handling FINAL-STATES: " + "\n");
-
-            states.handleFinalStates(input);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void handleStates(String input) {
-        try {
-            System.out.println("Handling STATES: " + "\n");
-            fsm.writeLog("Handling STATES: " + "\n");
-
-            states.handleStates(input);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void handleTransitions(String input) {
-        try {
-            System.out.println("Handling TRANSITIONS: " + "\n");
-            fsm.writeLog("Handling TRANSITIONS: " + "\n");
-
-            transitions.handleTransitions(input);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void handlePrint() {
-        try {
-            System.out.println("Printing FSM state...");
-            fsm.writeLog("Printing FSM state...");
-            fsm.printFile("output.txt");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 }
 interface Clear{
     void clear();
@@ -165,14 +93,20 @@ class CommandParser {
         if (command == null || command.trim().isEmpty()) return;
 
         command = command.trim();
+
         if (!command.endsWith(";")) {
             System.out.println("Warning: command must end with ';'");
             fsm.writeLog("Warning: command must end with ';'");
-
             return;
         }
 
         command = command.substring(0, command.length() - 1).trim();
+
+        fsm.writeLog("? "+command + ";");
+        PrintStream originalOut = System.out;
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream tempOut = new PrintStream(baos);
+        System.setOut(tempOut);
 
         try {
             if (command.toUpperCase().startsWith("SYMBOLS")) {
@@ -197,7 +131,7 @@ class CommandParser {
                 } else {
                     String filename = parts[1].trim();
                     if (!isValidFilename(filename)) {
-                        System.out.println("Error: Invalid filename '" + filename + "'. Use alphanumeric characters and valid extensions (e.g., .txt).");
+                        System.out.println("Error: Invalid filename '" + filename + "'.");
                         return;
                     }
                     fsm.printFile(filename);
@@ -205,14 +139,13 @@ class CommandParser {
             } else if (command.equalsIgnoreCase("CLEAR")) {
                 fsm.clear();
             } else if (command.toUpperCase().startsWith("LOG")) {
-                //fsm.log(command.substring(3).trim());
                 String filename = command.substring(3).trim();
                 fsm.log(filename);
             } else if (command.equalsIgnoreCase("EXIT")) {
                 fsm.exit();
             } else if (command.toUpperCase().startsWith("EXECUTE")) {
-                String input = command.substring(7).trim(); // "EXECUTE" kelimesinden sonrasını al
-                fsm.execute(input); // sadece 123 gibi giriş dizisini gönder
+                String input = command.substring(7).trim();
+                fsm.execute(input);
             } else if (command.toUpperCase().startsWith("LOAD")) {
                 String[] parts = command.split("\\s+", 2);
                 if (parts.length < 2) {
@@ -221,49 +154,41 @@ class CommandParser {
                 }
                 String filename = parts[1].trim();
                 System.out.println("LOAD file is: " + filename);
-                fsm.writeLog("LOAD file is: " + filename );
-
-
+                fsm.writeLog("LOAD file is: " + filename);
                 try {
-                    if (filename.endsWith(".fs")) {
-                        FSM loadedFSM = FSM.loadFromBinary(filename);
-                        fsm.copyFrom(loadedFSM);
-                    } else {
-                        FSM loadedFSM = FSM.loadFromScript(filename);
-                        fsm.copyFrom(loadedFSM);
-                    }
+                    FSM loadedFSM = filename.endsWith(".fs") ?
+                            FSM.loadFromBinary(filename) :
+                            FSM.loadFromScript(filename);
+                    fsm.copyFrom(loadedFSM);
                 } catch (Exception e) {
                     System.out.println("LOAD error: " + e.getMessage());
                 }
-
-        }else if(command.toUpperCase().startsWith("COMPILE")){
+            } else if (command.toUpperCase().startsWith("COMPILE")) {
                 String filename = command.substring(7).trim();
-                System.out.println("COMPILE file is: " + filename );
-                fsm.writeLog("COMPILE file is: " + filename );
+                System.out.println("COMPILE file is: " + filename);
+                fsm.writeLog("COMPILE file is: " + filename);
                 fsm.saveToBinary(filename);
-            }
-
-            else {
+            } else {
                 System.out.println("Warning: unknown command: " + command);
                 fsm.writeLog("Warning: unknown command: " + command);
-
             }
+
         } catch (Exception e) {
             System.out.println("Error while parsing command: " + e.getMessage());
             fsm.writeLog("Error while parsing command: " + e.getMessage());
+        } finally {
+            System.out.flush();
+            System.setOut(originalOut);
 
+            String output = baos.toString();
+            if (!output.isBlank()) {
+                fsm.writeLog(output.trim());
+            }
+            System.out.print(output);
         }
     }
 }
 
-class FSMDesigner {
-    private static final String VERSION = "2.3";
-    private static void printHeader() {
-        LocalDateTime now = LocalDateTime.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM d, yyyy, HH:mm");
-        System.out.println("FSM DESIGNER " + VERSION + " " + now.format(formatter));
-    }
-}
 abstract class Elements{
     protected String name;
 
@@ -1037,7 +962,7 @@ class Terminal implements Serializable {
 
             if (line.startsWith(";")) {
                 System.out.print("? ");
-                fsm.writeLog("? ");
+                //fsm.writeLog("? ");
                 continue;
             }
 
