@@ -46,11 +46,13 @@ public class Main {
         }
 
         String file = args[0];
+        /*
         try{
             fsm.loadFromScript(file);
         }catch(IOException e){
             System.out.println(e.getMessage());
         }
+            */
 
         try(BufferedReader reader=new BufferedReader(new FileReader(file))) {
             while (true) {
@@ -89,6 +91,7 @@ interface Clear{
     void clear();
 }
 class CommandParser {
+
     private static boolean isValidFilename(String filename) {
         if (filename == null || filename.trim().isEmpty()) {
             return false;
@@ -190,7 +193,24 @@ class CommandParser {
                         if (filename.endsWith(".fs")) {
                             loadedFSM = FSM.loadFromBinary(filename);
                         } else {
-                            loadedFSM = FSM.loadFromScript(filename);
+                            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                                String line;
+                                StringBuilder commandBuffer = new StringBuilder();
+                                while ((line = reader.readLine()) != null) {
+                                    line = line.trim();
+                                    if (line.startsWith(";") || line.isEmpty()) continue;
+                                    commandBuffer.append(" ").append(line);
+                                    if (line.contains(";")) {
+                                        String fullCommand = commandBuffer.toString().trim();
+                                        parseAndExecute(fullCommand, fsm);
+                                        commandBuffer.setLength(0);
+                                    }
+                                }
+                            } catch (IOException e) {
+                                fsm.writeLog("Error reading file: " + e.getMessage());
+                                System.err.println("Error reading file: " + e.getMessage());
+                            }
+                            loadedFSM = fsm;
                         }
                         fsm.copyFrom(loadedFSM);
                         String successMsg = "Load successful: " + filename;
