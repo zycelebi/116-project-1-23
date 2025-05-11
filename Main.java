@@ -110,10 +110,11 @@ class CommandParser {
             return;
         }
         int semicolonIndex = command.indexOf(';');
+        String comment = command.substring(semicolonIndex + 1).trim();
         command = command.substring(0, semicolonIndex).trim();
 
         try {
-            fsm.writeLog("? " + command + ";");
+            fsm.writeLog("? " + command + ";" + comment);
 
 
             // StringBuilder to collect system responses
