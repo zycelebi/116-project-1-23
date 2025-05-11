@@ -46,13 +46,11 @@ public class Main {
         }
 
         String file = args[0];
-        /*
         try{
             fsm.loadFromScript(file);
         }catch(IOException e){
             System.out.println(e.getMessage());
         }
-            */
 
         try(BufferedReader reader=new BufferedReader(new FileReader(file))) {
             while (true) {
@@ -91,7 +89,6 @@ interface Clear{
     void clear();
 }
 class CommandParser {
-
     private static boolean isValidFilename(String filename) {
         if (filename == null || filename.trim().isEmpty()) {
             return false;
@@ -109,13 +106,12 @@ class CommandParser {
             fsm.writeLog(warningMsg + "\n");
             return;
         }
+
         int semicolonIndex = command.indexOf(';');
         String comment = command.substring(semicolonIndex + 1).trim();
         command = command.substring(0, semicolonIndex).trim();
-
         try {
             fsm.writeLog("? " + command + ";" + comment);
-
 
             // StringBuilder to collect system responses
             StringBuilder responseLog = new StringBuilder();
@@ -263,7 +259,7 @@ class CommandParser {
                         responseLog.append(errorMsg).append("\n");
                     }
                 } else {
-                    String warningMsg = "Warning: invalid command; " + command;
+                    String warningMsg = "Warning: invalid command " + command;
                     System.out.println(warningMsg);
                     responseLog.append(warningMsg).append("\n");
                 }
@@ -553,6 +549,7 @@ class FSM implements Methods,Serializable {
                 }
                 System.out.println();
             }
+            System.out.println("}");
         }
     }
 
@@ -788,22 +785,43 @@ class States extends Elements implements Clear, Print,Serializable {
         }
 
         String[] tokens = input.trim().split("\\s+");
+        Set<String> duplicates = new TreeSet<>();  // Alfabetik sıralı ve tekrarsız
+        StringBuilder conflictMessage = new StringBuilder();
+        List<String> reservedWords = Arrays.asList("TRANSITIONS", "SYMBOLS", "STATES", "INITIAL-STATE", "FINAL-STATES", "PRINT", "CLEAR", "EXECUTE", "LOG", "LOAD", "COMPILE", "EXIT");
+
+
         for (String state : tokens) {
+            state = state.trim().replace(",", ""); // Virgül gibi karakterleri temizle
+            if (reservedWords.contains(state.toUpperCase())) {
+                continue; // Bu bir komut, state değil
+            }
+
             if (!isValid(state)) {
                 System.out.println("Warning: '" + state + "' is not a valid state name.");
                 continue;
             }
-            if(symbols.getSymbols().contains(state)){
-                System.out.println("Warning: '" + state + "' is already declared as a symbol and cannot be a state.");
+            String upperState = state.toUpperCase();
+            if (symbols.getSymbols().contains(upperState)) {
+                if (conflictMessage.length() > 0) {
+                    conflictMessage.append(", ");
+                }
+                conflictMessage.append(upperState);
                 continue;
             }
-            if (!states.contains(state)) {
-                states.add(state);
+            if (states.contains(upperState)) {
+                duplicates.add(upperState); // tekrar edenleri toplar
+                continue;
             }
+            states.add(upperState);
+        }
+
+        if (conflictMessage.length() > 0) {
+            System.out.println("Warning: '" + conflictMessage + "' is both a symbol and a state.");
+        }
+        if (!duplicates.isEmpty()) {
+            System.out.println("Warning: States " + String.join(", ", duplicates) + " were already declared.");
         }
     }
-
-
 
     public void handleInitialState(String input, Symbols symbols) {
         String symbol = input.trim();
@@ -812,22 +830,19 @@ class States extends Elements implements Clear, Print,Serializable {
             System.out.println("Warning: No valid initial state specified.");
             return;
         }
-        if (symbols.getSymbols().contains(symbol)) {
-            System.out.println("Warning: '" + symbol + "' is already declared as a symbol and cannot be used as a state.");
+        String upperSymbol = symbol.toUpperCase(); // Büyük harfe çevir
+        if (symbols.getSymbols().contains(upperSymbol)) {
+            System.out.println("Warning: '" + upperSymbol + "' is already declared as a symbol and cannot be used as a state.");
             return;
         }
 
-
-        if (!states.contains(symbol)) {
-            states.add(symbol);
-            System.out.println("Warning: Initial state '" + symbol + "' was not declared before.");
+        if (!states.contains(upperSymbol)) {
+            states.add(upperSymbol);
+            System.out.println("Warning: Initial state '" + upperSymbol + "' was not declared before.");
         }
 
-        initialState = symbol;
+        initialState = upperSymbol;
     }
-
-
-
 
     public void handleFinalStates(String input, Symbols symbols) {
         if (input.isBlank()) {
@@ -840,19 +855,20 @@ class States extends Elements implements Clear, Print,Serializable {
                 System.out.println("Warning: '" + state + "' is not a valid state name.");
                 continue;
             }
-            if (symbols.getSymbols().contains(state)) {
-                System.out.println("Warning: '" + state + "' is already declared as a symbol and cannot be a final state.");
+            String upperState = state.toUpperCase(); // Büyük harfe çevir
+            if (symbols.getSymbols().contains(upperState)) {
+                System.out.println("Warning: '" + upperState + "' is already declared as a symbol and cannot be a final state.");
                 continue;
             }
 
-            if (!states.contains(state)) {
-                System.out.println("Warning: State '" + state + "' was not declared before. Added automatically.");
-                states.add(state);
+            if (!states.contains(upperState)) {
+                System.out.println("Warning: State '" + upperState + "' was not declared before. Added automatically.");
+                states.add(upperState);
             }
-            if (!finalStates.contains(state)) {
-                finalStates.add(state);
+            if (!finalStates.contains(upperState)) {
+                finalStates.add(upperState);
             } else {
-                System.out.println("Warning: State '" + state + "' is already a final state.");
+                System.out.println("Warning: State '" + upperState + "' is already a final state.");
             }
         }
     }
@@ -1032,28 +1048,31 @@ class Transitions extends Elements implements Clear, Print,Serializable {
             return;
         }
 
-        if (!states.getStates().contains(fromState)) {
-            System.out.println("Warning: fromState '" + fromState + "' not declared. Adding automatically.");
-            states.getStates().add(fromState);
+        String upperFromState = fromState.toUpperCase(); // Büyük harfe çevir
+        String upperToState = toState.toUpperCase(); // Büyük harfe çevir
+
+        if (!states.getStates().contains(upperFromState)) {
+            System.out.println("Error: fromState '" + upperFromState + "' is not a state.");
+            return;
         }
-        if (!states.getStates().contains(toState)) {
-            System.out.println("Warning: toState '" + toState + "' not declared. Adding automatically.");
-            states.getStates().add(toState);
+        if (!states.getStates().contains(upperToState)) {
+            System.out.println("Error: toState '" + upperToState + "' is not a state.");
+            return;
         }
         if (!symbols.getSymbols().contains(symbol)) {
             System.out.println("Warning: symbol '" + symbol + "' not declared. Adding automatically.");
             symbols.getSymbols().add(symbol);
         }
 
-        transitions.putIfAbsent(fromState, new HashMap<>());
-        Map<String, String> symbolToState = transitions.get(fromState);
+        transitions.putIfAbsent(upperFromState, new HashMap<>());
+        Map<String, String> symbolToState = transitions.get(upperFromState);
 
         if (symbolToState.containsKey(symbol)) {
-            System.out.println("Warning: Transition already exists from '" + fromState + "' with symbol '" + symbol + "'.");
+            System.out.println("Warning: multiple transitions for symbol '" + symbol + "' and state '" + upperFromState + "'.");
             return;
         }
 
-        symbolToState.put(symbol, toState);
+        symbolToState.put(symbol, upperToState);
     }
 
     public void handleTransitions(String input) {
