@@ -103,14 +103,14 @@ class CommandParser {
         if (command == null || command.trim().isEmpty()) return;
 
         command = command.trim();
-        if (!command.endsWith(";")) {
+        if (!command.contains(";")) {
             String warningMsg = "Warning: command must end with ';'";
             System.out.println(warningMsg);
             fsm.writeLog(warningMsg + "\n");
             return;
         }
-
-        command = command.substring(0, command.length() - 1).trim();
+        int semicolonIndex = command.indexOf(';');
+        command = command.substring(0, semicolonIndex).trim();
 
         try {
             fsm.writeLog("? " + command + ";");
