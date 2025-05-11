@@ -131,10 +131,10 @@ class CommandParser {
                     fsm.getStates().handleStates(states, fsm.getSymbols());
                 } else if (command.toUpperCase().startsWith("INITIAL-STATE")) {
                     String initial = command.substring(14).trim();
-                    fsm.getStates().handleInitialState(initial);
+                    fsm.getStates().handleInitialState(initial, fsm.getSymbols());
                 } else if (command.toUpperCase().startsWith("FINAL-STATES")) {
                     String finals = command.substring(12).trim();
-                    fsm.getStates().handleFinalStates(finals);
+                    fsm.getStates().handleFinalStates(finals, fsm.getSymbols());
                 } else if (command.toUpperCase().startsWith("TRANSITIONS")) {
                     String transitions = command.substring(11).trim();
                     fsm.getTransitions().handleTransitions(transitions);
@@ -784,13 +784,19 @@ class States extends Elements implements Clear, Print,Serializable {
 
 
 
-    public void handleInitialState(String input) {
+    public void handleInitialState(String input, Symbols symbols) {
         String symbol = input.trim();
 
         if (symbol.isEmpty() || !isValid(symbol)) {
             System.out.println("Warning: No valid initial state specified.");
             return;
         }
+        if (symbols.getSymbols().contains(symbol)) {
+            System.out.println("Warning: '" + symbol + "' is already declared as a symbol and cannot be used as a state.");
+            return;
+        }
+
+
         if (!states.contains(symbol)) {
             states.add(symbol);
             System.out.println("Warning: Initial state '" + symbol + "' was not declared before.");
@@ -802,7 +808,7 @@ class States extends Elements implements Clear, Print,Serializable {
 
 
 
-    public void handleFinalStates(String input) {
+    public void handleFinalStates(String input, Symbols symbols) {
         if (input.isBlank()) {
             System.out.println("Warning: No final states specified.");
             return;
@@ -813,6 +819,11 @@ class States extends Elements implements Clear, Print,Serializable {
                 System.out.println("Warning: '" + state + "' is not a valid state name.");
                 continue;
             }
+            if (symbols.getSymbols().contains(state)) {
+                System.out.println("Warning: '" + state + "' is already declared as a symbol and cannot be a final state.");
+                continue;
+            }
+
             if (!states.contains(state)) {
                 System.out.println("Warning: State '" + state + "' was not declared before. Added automatically.");
                 states.add(state);
@@ -843,7 +854,7 @@ class Symbols extends Elements implements Clear, Print,Serializable{
         this.symbols=symbols;
     }
 
-    private void addSymbol(String name) throws ExistingSymbolException{
+    private void addSymbol(String name){
         if(isValid(name)==false){
             System.out.println("Warning: Symbol is not alphanumeric, it will be ignored!");
             fsm.writeLog("Warning: Symbol is not alphanumeric, it will be ignored!");
@@ -851,7 +862,7 @@ class Symbols extends Elements implements Clear, Print,Serializable{
         }
         if (symbols.contains(name)){
             fsm.writeLog("Warning: " + name + " was already declared as a symbol");
-            throw new ExistingSymbolException("Warning: " + name + " was already declared as a symbol");
+            System.out.println("Warning: " + name + " was already declared as a symbol");
         } else {
             symbols.add(name);
         }
@@ -907,7 +918,7 @@ class Symbols extends Elements implements Clear, Print,Serializable{
             System.out.println("Error: Cannot write symbols to file " + filename);
         }
     }
-    public void handleSymbols(String input, States states) throws ExistingSymbolException {
+    public void handleSymbols(String input, States states){
 
         if (input.isBlank()) {
             printSymbols();
@@ -1118,10 +1129,5 @@ class Terminal {
             fsm.writeLog("Error reading file: " + e.getMessage());
             System.err.println("Error reading file: " + e.getMessage());
         }
-    }
-}
-class ExistingSymbolException extends Exception{
-    public ExistingSymbolException(String message){
-        super(message);
     }
 }
