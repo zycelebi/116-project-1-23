@@ -125,10 +125,10 @@ class CommandParser {
             try {
                 if (command.toUpperCase().startsWith("SYMBOLS")) {
                     String symbols = command.substring(7).trim();
-                    fsm.getSymbols().handleSymbols(symbols);
+                    fsm.getSymbols().handleSymbols(symbols, fsm.getStates());
                 } else if (command.toUpperCase().startsWith("STATES")) {
                     String states = command.substring(6).trim();
-                    fsm.getStates().handleStates(states);
+                    fsm.getStates().handleStates(states, fsm.getSymbols());
                 } else if (command.toUpperCase().startsWith("INITIAL-STATE")) {
                     String initial = command.substring(14).trim();
                     fsm.getStates().handleInitialState(initial);
@@ -242,7 +242,7 @@ class CommandParser {
                         responseLog.append(errorMsg).append("\n");
                     }
                 } else {
-                    String warningMsg = "Warning: unknown command: " + command;
+                    String warningMsg = "Warning: invalid command; " + command;
                     System.out.println(warningMsg);
                     responseLog.append(warningMsg).append("\n");
                 }
@@ -760,7 +760,7 @@ class States extends Elements implements Clear, Print,Serializable {
         }
     }
 
-    public void handleStates(String input) {
+    public void handleStates(String input, Symbols symbols) {
         if (input.isBlank()) {
             printStates();
             return;
@@ -770,6 +770,10 @@ class States extends Elements implements Clear, Print,Serializable {
         for (String state : tokens) {
             if (!isValid(state)) {
                 System.out.println("Warning: '" + state + "' is not a valid state name.");
+                continue;
+            }
+            if(symbols.getSymbols().contains(state)){
+                System.out.println("Warning: '" + state + "' is already declared as a symbol and cannot be a state.");
                 continue;
             }
             if (!states.contains(state)) {
@@ -846,8 +850,8 @@ class Symbols extends Elements implements Clear, Print,Serializable{
             return;
         }
         if (symbols.contains(name)){
-            fsm.writeLog("Warning: Symbol '" + name + "' exists!");
-            throw new ExistingSymbolException("Warning: Symbol '" + name + "' exists!");
+            fsm.writeLog("Warning: " + name + " was already declared as a symbol");
+            throw new ExistingSymbolException("Warning: " + name + " was already declared as a symbol");
         } else {
             symbols.add(name);
         }
@@ -863,10 +867,11 @@ class Symbols extends Elements implements Clear, Print,Serializable{
 
 
         for (String s: symbols) {
-            System.out.println(s);
+            System.out.print(s +" ");
             fsm.writeLog(s);
 
         }
+        System.out.println();
     }
     @Override
     public String toString() {
@@ -902,7 +907,8 @@ class Symbols extends Elements implements Clear, Print,Serializable{
             System.out.println("Error: Cannot write symbols to file " + filename);
         }
     }
-    public void handleSymbols(String input) throws ExistingSymbolException {
+    public void handleSymbols(String input, States states) throws ExistingSymbolException {
+
         if (input.isBlank()) {
             printSymbols();
             return;
@@ -910,6 +916,15 @@ class Symbols extends Elements implements Clear, Print,Serializable{
 
         String[] array = input.trim().split("\\s+");
         for (String s : array) {
+            if (s.length() != 1) {
+                System.out.println("Warning: '" + s + "' is not allowed as a symbol, length must be 1.");
+                continue;
+            }
+
+            if(states.getStates().contains(s)){
+                System.out.println("Warning: '" + s + "' is already declared as a state and cannot be a symbol.");
+                continue;
+            }
             addSymbol(s);
         }
     }
