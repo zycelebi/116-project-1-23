@@ -54,7 +54,7 @@ public class Main {
 
         try(BufferedReader reader=new BufferedReader(new FileReader(file))) {
             while (true) {
-                System.out.print("?"); // başa ? koyar
+                System.out.print("?");
 
 
 
@@ -85,9 +85,8 @@ public class Main {
 
     }
 }
-interface Clear{
-    void clear();
-}
+
+//---------------------------------------------------------PROCESSING COMMANDS------------------------------------------------
 class CommandParser {
     private static boolean isValidFilename(String filename) {
         if (filename == null || filename.trim().isEmpty()) {
@@ -95,66 +94,54 @@ class CommandParser {
         }
         return filename.matches("[a-zA-Z0-9_\\-\\.]+") && (filename.endsWith(".txt") || filename.endsWith(".fs"));
     }
-
     public static void parseAndExecute(String command, FSM fsm) {
-        if (command == null || command.trim().isEmpty()) {
-            return;
-        }
+        if (command == null || command.trim().isEmpty()) return;
 
         command = command.trim();
-
-        // Noktalı virgül kontrolü
-        if (!command.endsWith(";")) {
+        if (!command.contains(";")) {
             String warningMsg = "Warning: command must end with ';'";
             System.out.println(warningMsg);
             fsm.writeLog(warningMsg + "\n");
             return;
         }
 
-        // Yorumları ayrıştır
         int semicolonIndex = command.indexOf(';');
         String comment = command.substring(semicolonIndex + 1).trim();
-        String commandLine = command.substring(0, semicolonIndex).trim();
-
-        // Boş komut kontrolü
-        if (commandLine.isEmpty()) {
-            String warningMsg = "Warning: empty command;";
-            System.out.println(warningMsg);
-            fsm.writeLog(warningMsg + "\n");
-            return;
-        }
-
-        // Komut ve argümanları ayır
-        String[] parts = commandLine.split("\\s+", 2);
-        String cmd = parts[0].toUpperCase();
-        String arguments = parts.length > 1 ? parts[1].trim() : "";
-
+        command = command.substring(0, semicolonIndex).trim();
         try {
-            // Log komut girişi (komut + argümanlar + noktalı virgül + yorum)
-            fsm.writeLog("? " + commandLine + ";" + (comment.isEmpty() ? "" : " " + comment));
+            fsm.writeLog("? " + command + ";" + comment);
 
+            // StringBuilder to collect system responses
             StringBuilder responseLog = new StringBuilder();
+
+            // Redirect System.out to capture output while printing to terminal
             PrintStream originalOut = System.out;
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             PrintStream tempOut = new TerminalPrintStream(bytes, originalOut);
             System.setOut(tempOut);
 
             try {
-                if (cmd.equalsIgnoreCase("SYMBOLS")) {
-                    fsm.getSymbols().handleSymbols(arguments, fsm.getStates());
-                } else if (cmd.equalsIgnoreCase("STATES")) {
-                    fsm.getStates().handleStates(arguments, fsm.getSymbols());
-                } else if (cmd.equalsIgnoreCase("INITIAL-STATE")) {
-                    fsm.getStates().handleInitialState(arguments, fsm.getSymbols());
-                } else if (cmd.equalsIgnoreCase("FINAL-STATES")) {
-                    fsm.getStates().handleFinalStates(arguments, fsm.getSymbols());
-                } else if (cmd.equalsIgnoreCase("TRANSITIONS")) {
-                    fsm.getTransitions().handleTransitions(arguments);
-                } else if (cmd.equalsIgnoreCase("PRINT")) {
-                    if (arguments.isEmpty()) {
+                if (command.toUpperCase().startsWith("SYMBOLS")) {
+                    String symbols = command.substring(7).trim();
+                    fsm.getSymbols().handleSymbols(symbols, fsm.getStates());
+                } else if (command.toUpperCase().startsWith("STATES")) {
+                    String states = command.substring(6).trim();
+                    fsm.getStates().handleStates(states, fsm.getSymbols());
+                } else if (command.toUpperCase().startsWith("INITIAL-STATE")) {
+                    String initial = command.substring(14).trim();
+                    fsm.getStates().handleInitialState(initial, fsm.getSymbols());
+                } else if (command.toUpperCase().startsWith("FINAL-STATES")) {
+                    String finals = command.substring(12).trim();
+                    fsm.getStates().handleFinalStates(finals, fsm.getSymbols());
+                } else if (command.toUpperCase().startsWith("TRANSITIONS")) {
+                    String transitions = command.substring(11).trim();
+                    fsm.getTransitions().handleTransitions(transitions);
+                } else if (command.toUpperCase().startsWith("PRINT")) {
+                    String[] parts = command.split("\\s+");
+                    if (parts.length == 1) {
                         fsm.printToConsole();
                     } else {
-                        String filename = arguments.trim();
+                        String filename = parts[1].trim();
                         if (!isValidFilename(filename)) {
                             String errorMsg = "Error: Invalid filename '" + filename +
                                     "'. Use alphanumeric characters and valid extensions (e.g., .txt, .fs).";
@@ -164,22 +151,25 @@ class CommandParser {
                         }
                         fsm.printFile(filename);
                     }
-                } else if (cmd.equalsIgnoreCase("CLEAR")) {
+                } else if (command.equalsIgnoreCase("CLEAR")) {
                     fsm.clear();
-                } else if (cmd.equalsIgnoreCase("LOG")) {
-                    fsm.log(arguments);
-                } else if (cmd.equalsIgnoreCase("EXIT")) {
+                } else if (command.toUpperCase().startsWith("LOG")) {
+                    String filename = command.substring(3).trim();
+                    fsm.log(filename);
+                } else if (command.equalsIgnoreCase("EXIT")) {
                     fsm.exit();
-                } else if (cmd.equalsIgnoreCase("EXECUTE")) {
-                    fsm.execute(arguments);
-                } else if (cmd.equalsIgnoreCase("LOAD")) {
-                    if (arguments.isEmpty()) {
+                } else if (command.toUpperCase().startsWith("EXECUTE")) {
+                    String input = command.substring(7).trim();
+                    fsm.execute(input);
+                } else if (command.toUpperCase().startsWith("LOAD")) {
+                    String[] parts = command.split("\\s+", 2);
+                    if (parts.length < 2) {
                         String errorMsg = "Error: LOAD requires a filename.";
                         System.out.println(errorMsg);
                         responseLog.append(errorMsg).append("\n");
                         return;
                     }
-                    String filename = arguments.trim();
+                    String filename = parts[1].trim();
                     File file = new File(filename);
                     if (!file.exists()) {
                         String errorMsg = "LOAD error: File '" + filename + "' not found.";
@@ -241,16 +231,17 @@ class CommandParser {
                         System.out.println(errorMsg);
                         responseLog.append(errorMsg).append("\n");
                     }
-                } else if (cmd.equalsIgnoreCase("COMPILE")) {
-                    if (arguments.isEmpty()) {
+                } else if (command.toUpperCase().startsWith("COMPILE")) {
+                    String filename = command.substring(7).trim();
+                    if (filename.isEmpty()) {
                         String errorMsg = "Error: COMPILE requires a filename.";
                         System.out.println(errorMsg);
                         responseLog.append(errorMsg).append("\n");
                         return;
                     }
                     try {
-                        fsm.saveToBinary(arguments);
-                        String successMsg = "Compile successful: " + arguments;
+                        fsm.saveToBinary(filename);
+                        String successMsg = "Compile successful: " + filename;
                         System.out.println(successMsg);
                     } catch (NotSerializableException e) {
                         String errorMsg = "COMPILE error: FSM or its components are not serializable (" + e.getMessage() + ")";
@@ -266,12 +257,12 @@ class CommandParser {
                         responseLog.append(errorMsg).append("\n");
                     }
                 } else {
-                    String warningMsg = "Warning: invalid command " + commandLine;
+                    String warningMsg = "Warning: invalid command " + command;
                     System.out.println(warningMsg);
                     responseLog.append(warningMsg).append("\n");
                 }
 
-                // Çıktıyı yakala ve filtrele
+                // Capture and filter console output
                 tempOut.flush();
                 String consoleOutput = bytes.toString();
                 if (!consoleOutput.isEmpty()) {
@@ -280,7 +271,7 @@ class CommandParser {
                     for (String line : lines) {
                         if (!line.startsWith("Warning:") &&
                                 !line.startsWith("Transition added:") &&
-                                !line.startsWith("FSM loaded enjoys binary:") &&
+                                !line.startsWith("FSM loaded from binary:") &&
                                 !line.startsWith("FSM compiled and saved to binary:") &&
                                 !line.startsWith("FSM built from script:")) {
                             uniqueLines.add(line);
@@ -294,10 +285,11 @@ class CommandParser {
                 }
 
             } finally {
+                // Restore original System.out
                 System.setOut(originalOut);
             }
 
-            // Yanıtları logla
+            // Log all collected responses
             if (responseLog.length() > 0) {
                 fsm.writeLog(responseLog.toString());
             }
@@ -309,6 +301,8 @@ class CommandParser {
         }
     }
 }
+
+//---------------------------------------------------------CAPTURING TERMINAL------------------------------------------------
 class TerminalPrintStream extends PrintStream {
     private final PrintStream print;
 
@@ -341,6 +335,8 @@ class TerminalPrintStream extends PrintStream {
         print.close();
     }
 }
+
+//---------------------------------------------------------ELEMENTS------------------------------------------------
 abstract class Elements{
     protected String name;
 
@@ -353,6 +349,7 @@ abstract class Elements{
     public abstract boolean isValid(String symbol);
 }
 
+//---------------------------------------------------------FSM------------------------------------------------
 class FSM implements Methods,Serializable {
     private static final long serialVersionUID = 1L;
     private Symbols symbols;
@@ -417,7 +414,6 @@ class FSM implements Methods,Serializable {
         System.out.println("TERMINATED BY USER");
         logged = false;
         System.exit(0);
-        //for errors System.exit(1); maybe
     }
     public void writeLog(String text) {
         if (logged && logWriter != null) {
@@ -450,7 +446,6 @@ class FSM implements Methods,Serializable {
         } else {
             String filename = input.trim();
 
-            // Eğer daha önce log vardıysa kapat
             if (logged) {
                 try {
                     logWriter.close();
@@ -480,7 +475,6 @@ class FSM implements Methods,Serializable {
         }
 
 
-        // Check if the file can be created or overwritten
         File file = new File(filename);
         try {
             // Ensure parent directory exists
@@ -635,22 +629,8 @@ class FSM implements Methods,Serializable {
         }
     }
 }
-interface Methods{
-    void exit();
-    void log(String filename);
-    void printFile(String filename);
 
-    void clear();
-
-
-}
-interface Print {
-    void printToFile(String filename);
-    //all print funcs too?
-    //void print();
-
-}
-
+//---------------------------------------------------------STATES------------------------------------------------
 class States extends Elements implements Clear, Print,Serializable {
     private static final long serialVersionUID = 1L;
     private Set<String> states = new HashSet<>();
@@ -723,7 +703,7 @@ class States extends Elements implements Clear, Print,Serializable {
 
     @Override
     public boolean isValid(String symbol) {
-        return symbol.matches("[a-zA-Z][0-9]+");
+        return symbol.matches("[a-zA-Z0-9]+");
     }
 
     private boolean addState(String stateName) {
@@ -791,15 +771,15 @@ class States extends Elements implements Clear, Print,Serializable {
         }
 
         String[] tokens = input.trim().split("\\s+");
-        Set<String> duplicates = new TreeSet<>();  // Alfabetik sıralı ve tekrarsız
+        Set<String> duplicates = new TreeSet<>();
         StringBuilder conflictMessage = new StringBuilder();
         List<String> reservedWords = Arrays.asList("TRANSITIONS", "SYMBOLS", "STATES", "INITIAL-STATE", "FINAL-STATES", "PRINT", "CLEAR", "EXECUTE", "LOG", "LOAD", "COMPILE", "EXIT");
 
 
         for (String state : tokens) {
-            state = state.trim().replace(",", ""); // Virgül gibi karakterleri temizle
+            state = state.trim().replace(",", "");
             if (reservedWords.contains(state.toUpperCase())) {
-                continue; // Bu bir komut, state değil
+                continue;
             }
 
             if (!isValid(state)) {
@@ -815,7 +795,7 @@ class States extends Elements implements Clear, Print,Serializable {
                 continue;
             }
             if (states.contains(upperState)) {
-                duplicates.add(upperState); // tekrar edenleri toplar
+                duplicates.add(upperState);
                 continue;
             }
             states.add(upperState);
@@ -836,7 +816,7 @@ class States extends Elements implements Clear, Print,Serializable {
             System.out.println("Warning: No valid initial state specified.");
             return;
         }
-        String upperSymbol = symbol.toUpperCase(); // Büyük harfe çevir
+        String upperSymbol = symbol.toUpperCase();
         if (symbols.getSymbols().contains(upperSymbol)) {
             System.out.println("Warning: '" + upperSymbol + "' is already declared as a symbol and cannot be used as a state.");
             return;
@@ -861,7 +841,7 @@ class States extends Elements implements Clear, Print,Serializable {
                 System.out.println("Warning: '" + state + "' is not a valid state name.");
                 continue;
             }
-            String upperState = state.toUpperCase(); // Büyük harfe çevir
+            String upperState = state.toUpperCase();
             if (symbols.getSymbols().contains(upperState)) {
                 System.out.println("Warning: '" + upperState + "' is already declared as a symbol and cannot be a final state.");
                 continue;
@@ -880,6 +860,7 @@ class States extends Elements implements Clear, Print,Serializable {
     }
 }
 
+//---------------------------------------------------------SYMBOLS------------------------------------------------
 class Symbols extends Elements implements Clear, Print,Serializable{
     private static final long serialVersionUID = 1L;
     private Set<String> symbols=new HashSet<>();
@@ -983,6 +964,8 @@ class Symbols extends Elements implements Clear, Print,Serializable{
         }
     }
 }
+
+//---------------------------------------------------------TRANSITIONS------------------------------------------------
 class Transitions extends Elements implements Clear, Print,Serializable {
     private static final long serialVersionUID = 1L;
     private Map<String, Map<String, String>> transitions = new HashMap<>();
@@ -1054,8 +1037,8 @@ class Transitions extends Elements implements Clear, Print,Serializable {
             return;
         }
 
-        String upperFromState = fromState.toUpperCase(); // Büyük harfe çevir
-        String upperToState = toState.toUpperCase(); // Büyük harfe çevir
+        String upperFromState = fromState.toUpperCase();
+        String upperToState = toState.toUpperCase();
 
         if (!states.getStates().contains(upperFromState)) {
             System.out.println("Error: fromState '" + upperFromState + "' is not a state.");
@@ -1121,6 +1104,8 @@ class Transitions extends Elements implements Clear, Print,Serializable {
         }
     }
 }
+
+//---------------------------------------------------------PROCESSING FILE------------------------------------------------
 class Terminal {
     private final Scanner scanner = new Scanner(System.in);
     private final FSM fsm;
@@ -1139,7 +1124,7 @@ class Terminal {
         while (scanner.hasNextLine()) {
             String line = scanner.nextLine().trim();
 
-            if (line.startsWith(";") || line.isEmpty()) {
+            if (line.startsWith(";")) {
                 System.out.print("? ");
                 fsm.writeLog("? ");
                 continue;
@@ -1160,16 +1145,15 @@ class Terminal {
     public void processFile(File file) {
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
+            StringBuilder commandBuffer = new StringBuilder();
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
                 if (line.startsWith(";") || line.isEmpty()) continue;
-
-                // Her satırı bağımsız olarak işle
-                if (line.endsWith(";")) {
-                    c.parseAndExecute(line, fsm);
-                } else {
-                    System.out.println("Warning: command must end with ';'");
-                    fsm.writeLog("Warning: command must end with ';'\n");
+                commandBuffer.append(" ").append(line);
+                if (line.contains(";")) {
+                    String fullCommand = commandBuffer.toString().trim();
+                    c.parseAndExecute(fullCommand, fsm);
+                    commandBuffer.setLength(0);
                 }
             }
         } catch (IOException e) {
@@ -1177,4 +1161,19 @@ class Terminal {
             System.err.println("Error reading file: " + e.getMessage());
         }
     }
+}
+
+//---------------------------------------------------------INTERFACES------------------------------------------------
+interface Clear{
+    void clear();
+}
+interface Methods{
+    void exit();
+    void log(String filename);
+    void printFile(String filename);
+    void clear();
+}
+interface Print {
+    void printToFile(String filename);
+
 }
